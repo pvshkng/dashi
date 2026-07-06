@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { windowManager, type WindowId } from './manager.svelte';
+	import { windowManager } from './manager.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { cn } from '$lib/utils';
 	import XIcon from 'phosphor-svelte/lib/X';
@@ -8,19 +8,32 @@
 	import BrowsersIcon from 'phosphor-svelte/lib/Browsers';
 	import ArrowsOutSimpleIcon from 'phosphor-svelte/lib/ArrowsOutSimple';
 
+	const EDGE_SNAP_THRESHOLD = 24;
+
 	let {
 		id,
 		title,
 		icon: Icon,
+		dockable = true,
 		children
 	}: {
-		id: WindowId;
+		id: string;
 		title: string;
 		icon: typeof XIcon;
+		dockable?: boolean;
 		children: Snippet;
 	} = $props();
 
 	let win = $derived(windowManager.windows[id]);
+	// Which edge the window would dock to if released right now.
+	let snapPreview = $state<'left' | 'right' | null>(null);
+
+	function edgeUnderPointer(clientX: number): 'left' | 'right' | null {
+		if (!dockable) return null;
+		if (clientX <= EDGE_SNAP_THRESHOLD) return 'left';
+		if (clientX >= window.innerWidth - EDGE_SNAP_THRESHOLD) return 'right';
+		return null;
+	}
 
 	function startDrag(event: PointerEvent) {
 		if (win.docked) return;
@@ -40,10 +53,14 @@
 				8,
 				Math.min(window.innerHeight - 80, originY + (moveEvent.clientY - startY))
 			);
+			snapPreview = edgeUnderPointer(moveEvent.clientX);
 		}
-		function onUp() {
+		function onUp(upEvent: PointerEvent) {
 			window.removeEventListener('pointermove', onMove);
 			window.removeEventListener('pointerup', onUp);
+			const edge = edgeUnderPointer(upEvent.clientX);
+			snapPreview = null;
+			if (edge) windowManager.dock(id, edge);
 		}
 		window.addEventListener('pointermove', onMove);
 		window.addEventListener('pointerup', onUp);
@@ -77,7 +94,10 @@
 
 		function onMove(moveEvent: PointerEvent) {
 			const delta = moveEvent.clientX - startX;
-			win.dockWidth = Math.max(280, Math.min(720, side === 'left' ? originW + delta : originW - delta));
+			win.dockWidth = Math.max(
+				280,
+				Math.min(720, side === 'left' ? originW + delta : originW - delta)
+			);
 		}
 		function onUp() {
 			window.removeEventListener('pointermove', onMove);
@@ -88,16 +108,20 @@
 	}
 </script>
 
-{#if win.open}
+{#if win?.open}
+	{#if snapPreview}
+		<div
+			class="border-primary bg-primary/10 pointer-events-none fixed inset-y-2 z-50 w-[380px] rounded-xl border-2 border-dashed"
+			style={`${snapPreview}: 8px;`}
+		></div>
+	{/if}
 	<div
 		role="dialog"
 		aria-label={title}
 		tabindex="-1"
 		class={cn(
 			'bg-background/80 fixed flex flex-col overflow-hidden border shadow-xl backdrop-blur-xl',
-			win.docked
-				? 'inset-y-0 rounded-none border-y-0'
-				: 'rounded-xl'
+			win.docked ? 'inset-y-0 rounded-none border-y-0' : 'rounded-xl'
 		)}
 		style={win.docked
 			? `${win.docked}: 0; width: ${win.dockWidth}px; z-index: ${40 + win.z};`
@@ -114,7 +138,7 @@
 		>
 			<div class="text-muted-foreground flex items-center gap-2 text-sm font-medium">
 				<Icon size={16} />
-				<span class="text-foreground">{title}</span>
+				<span class="text-foreground truncate">{title}</span>
 			</div>
 			<div
 				class="flex items-center gap-0.5"
@@ -123,34 +147,36 @@
 				aria-label="Window controls"
 				onpointerdown={(event) => event.stopPropagation()}
 			>
-				<Button
-					variant="ghost"
-					size="icon"
-					class={cn('size-6', win.docked === 'left' && 'bg-accent')}
-					title="Dock left"
-					onclick={() => windowManager.dock(id, win.docked === 'left' ? null : 'left')}
-				>
-					<SidebarSimpleIcon size={14} />
-				</Button>
-				<Button
-					variant="ghost"
-					size="icon"
-					class={cn('size-6', win.docked === 'right' && 'bg-accent')}
-					title="Dock right"
-					onclick={() => windowManager.dock(id, win.docked === 'right' ? null : 'right')}
-				>
-					<SidebarSimpleIcon size={14} class="-scale-x-100" />
-				</Button>
-				{#if win.docked}
+				{#if dockable}
 					<Button
 						variant="ghost"
 						size="icon"
-						class="size-6"
-						title="Float"
-						onclick={() => windowManager.dock(id, null)}
+						class={cn('size-6', win.docked === 'left' && 'bg-accent')}
+						title="Dock left"
+						onclick={() => windowManager.dock(id, win.docked === 'left' ? null : 'left')}
 					>
-						<BrowsersIcon size={14} />
+						<SidebarSimpleIcon size={14} />
 					</Button>
+					<Button
+						variant="ghost"
+						size="icon"
+						class={cn('size-6', win.docked === 'right' && 'bg-accent')}
+						title="Dock right"
+						onclick={() => windowManager.dock(id, win.docked === 'right' ? null : 'right')}
+					>
+						<SidebarSimpleIcon size={14} class="-scale-x-100" />
+					</Button>
+					{#if win.docked}
+						<Button
+							variant="ghost"
+							size="icon"
+							class="size-6"
+							title="Float"
+							onclick={() => windowManager.dock(id, null)}
+						>
+							<BrowsersIcon size={14} />
+						</Button>
+					{/if}
 				{/if}
 				<Button
 					variant="ghost"

@@ -1,12 +1,10 @@
 <script lang="ts">
 	import type { Widget, WidgetStyle } from '$lib/widgets/types';
-	import StylePopover from './StylePopover.svelte';
-	import DataPopover from './DataPopover.svelte';
-	import SettingsPopover from './SettingsPopover.svelte';
 	import { cn } from '$lib/utils';
 	import TrashIcon from 'phosphor-svelte/lib/Trash';
-	import DotsSixVerticalIcon from 'phosphor-svelte/lib/DotsSixVertical';
 	import ArrowsOutIcon from 'phosphor-svelte/lib/ArrowsOut';
+	import SlidersIcon from 'phosphor-svelte/lib/Sliders';
+	import DatabaseIcon from 'phosphor-svelte/lib/Database';
 
 	let {
 		widget,
@@ -14,20 +12,24 @@
 		editable = false,
 		dragging = false,
 		resizing = false,
+		invalid = false,
 		onDragStart,
 		onResizeStart,
 		onRemove,
-		onUpdate
+		onOpenConfig,
+		onOpenData
 	}: {
 		widget: Widget;
 		children: import('svelte').Snippet;
 		editable?: boolean;
 		dragging?: boolean;
 		resizing?: boolean;
+		invalid?: boolean;
 		onDragStart: (event: PointerEvent) => void;
 		onResizeStart: (event: PointerEvent) => void;
 		onRemove: () => void;
-		onUpdate: (widget: Widget) => void;
+		onOpenConfig: () => void;
+		onOpenData: () => void;
 	} = $props();
 
 	const fontFamilies: Record<NonNullable<WidgetStyle['fontFamily']>, string> = {
@@ -65,31 +67,48 @@
 	class={cn(
 		'relative flex h-full w-full flex-col overflow-hidden border backdrop-blur-md',
 		!style?.backgroundColor && 'bg-background/50',
-		(dragging || resizing) && 'ring-primary shadow-lg ring-2'
+		(dragging || resizing) &&
+			(invalid ? 'ring-destructive shadow-lg ring-2' : 'ring-primary shadow-lg ring-2')
 	)}
 	style={containerStyle}
 >
-	<div class="flex items-center justify-between gap-1 border-b border-inherit px-2 py-1">
-		<div class="flex min-w-0 items-center gap-1">
-			{#if editable}
+	<div
+		role="presentation"
+		class={cn(
+			'flex items-center justify-between gap-1 border-b border-inherit px-2 py-1 select-none',
+			editable && 'cursor-grab active:cursor-grabbing'
+		)}
+		onpointerdown={(event) => editable && onDragStart(event)}
+	>
+		<span class="truncate text-sm font-medium">{widget.title}</span>
+		{#if editable}
+			<div
+				class="flex shrink-0 items-center gap-0.5"
+				role="toolbar"
+				tabindex="-1"
+				aria-label="Widget actions"
+				onpointerdown={(event) => event.stopPropagation()}
+			>
+				{#if widget.kind !== 'text'}
+					<button
+						type="button"
+						class="text-muted-foreground hover:text-foreground p-0.5"
+						title="Data source"
+						aria-label="Widget data source"
+						onclick={onOpenData}
+					>
+						<DatabaseIcon size={14} />
+					</button>
+				{/if}
 				<button
 					type="button"
-					class="text-muted-foreground shrink-0 cursor-grab active:cursor-grabbing"
-					onpointerdown={onDragStart}
-					aria-label="Drag widget"
+					class="text-muted-foreground hover:text-foreground p-0.5"
+					title="Settings & style"
+					aria-label="Widget settings and style"
+					onclick={onOpenConfig}
 				>
-					<DotsSixVerticalIcon size={16} />
+					<SlidersIcon size={14} />
 				</button>
-			{/if}
-			<span class="truncate text-sm font-medium">{widget.title}</span>
-		</div>
-		{#if editable}
-			<div class="flex shrink-0 items-center gap-0.5">
-				<StylePopover style={widget.style} onChange={(s) => onUpdate({ ...widget, style: s })} />
-				{#if widget.kind !== 'text'}
-					<DataPopover {widget} onChange={onUpdate} />
-				{/if}
-				<SettingsPopover {widget} onChange={onUpdate} />
 				<button
 					type="button"
 					class="text-muted-foreground hover:text-destructive p-0.5"

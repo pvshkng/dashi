@@ -1,6 +1,13 @@
 import { get, set, del } from 'idb-keyval';
 import type { Widget } from '$lib/widgets/types';
-import { DASHI_EXTENSION, parseDashi, serializeDashi, type DashiFile } from './types';
+import {
+	DASHI_EXTENSION,
+	defaultBackground,
+	parseDashi,
+	serializeDashi,
+	type DashboardBackground,
+	type DashiFile
+} from './types';
 import { connectionsStore } from '$lib/connections/store.svelte';
 
 const CURRENT_DOC_KEY = 'dashi:current';
@@ -22,6 +29,7 @@ class DashiStore {
 			get<string>(CURRENT_FILENAME_KEY)
 		]);
 		if (saved) {
+			saved.background ??= { ...defaultBackground };
 			this.doc = saved;
 			this.fileName = savedName ?? null;
 			await this.mergeConnections(saved);
@@ -76,6 +84,7 @@ class DashiStore {
 			version: 1,
 			name: mockDashboard.name,
 			colorScheme: mockDashboard.colorScheme,
+			background: { ...defaultBackground },
 			widgets: structuredClone(mockWidgets),
 			connections: [mockCsvConnection]
 		};
@@ -87,7 +96,14 @@ class DashiStore {
 	}
 
 	newDashboard(name: string): void {
-		this.doc = { version: 1, name, colorScheme: 'blue', widgets: [], connections: [] };
+		this.doc = {
+			version: 1,
+			name,
+			colorScheme: 'blue',
+			background: { ...defaultBackground },
+			widgets: [],
+			connections: []
+		};
 		this.fileName = null;
 		this.mode = 'edit';
 		this.persist();
@@ -128,6 +144,12 @@ class DashiStore {
 	setColorScheme(schemeId: string): void {
 		if (!this.doc) return;
 		this.doc.colorScheme = schemeId;
+		this.persist();
+	}
+
+	setBackground(background: Partial<DashboardBackground>): void {
+		if (!this.doc) return;
+		this.doc.background = { ...this.doc.background, ...background };
 		this.persist();
 	}
 

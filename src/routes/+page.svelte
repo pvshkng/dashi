@@ -53,6 +53,9 @@
 
 <div
 	class="relative min-h-screen"
+	style={dashiStore.doc?.background.color
+		? `background-color: ${dashiStore.doc.background.color}`
+		: ''}
 	role="application"
 	ondragover={(event) => {
 		event.preventDefault();
@@ -65,6 +68,7 @@
 		<main class="p-4 pb-24">
 			<Dashboard
 				colorScheme={dashiStore.doc.colorScheme}
+				background={dashiStore.doc.background}
 				widgets={dashiStore.doc.widgets}
 				connections={connectionsStore.connections}
 				editable={dashiStore.mode === 'edit'}
@@ -87,8 +91,8 @@
 				<h1 class="text-4xl font-semibold tracking-tight">Dashi</h1>
 				<p class="text-muted-foreground max-w-md text-sm">
 					Client-side BI powered by DuckDB in your browser. Open a
-					<span class="text-foreground font-medium">.dashi</span> dashboard file to get started, or
-					explore the example.
+					<span class="text-foreground font-medium">.dashi</span> dashboard file to get started, or explore
+					the example.
 				</p>
 			</div>
 			<div class="flex flex-wrap items-center justify-center gap-2">

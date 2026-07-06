@@ -9,10 +9,20 @@ export const DASHI_EXTENSION = '.dashi';
  * File connections only carry metadata — their blobs must be re-attached
  * via the Connections window after opening on a new machine.
  */
+export interface DashboardBackground {
+	/** Draw the snap-to-grid lines behind widgets. */
+	showGrid: boolean;
+	/** Custom background color; empty/undefined falls back to the app theme. */
+	color?: string;
+}
+
+export const defaultBackground: DashboardBackground = { showGrid: false };
+
 export interface DashiFile {
 	version: number;
 	name: string;
 	colorScheme: string;
+	background: DashboardBackground;
 	widgets: Widget[];
 	connections: DataConnection[];
 }
@@ -38,10 +48,15 @@ export function parseDashi(raw: string): DashiFile {
 	if (typeof doc.name !== 'string' || !Array.isArray(doc.widgets)) {
 		throw new Error('Not a valid .dashi file: missing name or widgets.');
 	}
+	const background = (doc.background ?? {}) as Partial<DashboardBackground>;
 	return {
 		version: DASHI_VERSION,
 		name: doc.name,
 		colorScheme: typeof doc.colorScheme === 'string' ? doc.colorScheme : 'blue',
+		background: {
+			showGrid: background.showGrid === true,
+			color: typeof background.color === 'string' ? background.color : undefined
+		},
 		widgets: doc.widgets,
 		connections: Array.isArray(doc.connections) ? doc.connections : []
 	};

@@ -1,18 +1,26 @@
 <script lang="ts">
-	import type { Widget } from '$lib/widgets/types';
+	import type { Widget, WidgetLayout } from '$lib/widgets/types';
 	import type { DataConnection } from '$lib/connections/types';
+	import type { DashboardBackground } from '$lib/dashi/types';
 	import WidgetShell from './WidgetShell.svelte';
+	import WidgetConfigPanel from './WidgetConfigPanel.svelte';
+	import WidgetDataPanel from './WidgetDataPanel.svelte';
 	import ChartWidget from '$lib/widgets/ChartWidget.svelte';
 	import TableWidget from '$lib/widgets/TableWidget.svelte';
 	import TextWidget from '$lib/widgets/TextWidget.svelte';
+	import FloatingWindow from '$lib/windows/FloatingWindow.svelte';
+	import { windowManager } from '$lib/windows/manager.svelte';
 	import { getColorScheme } from '$lib/charts/theme';
 	import { cn } from '$lib/utils';
+	import SlidersIcon from 'phosphor-svelte/lib/Sliders';
+	import DatabaseIcon from 'phosphor-svelte/lib/Database';
 
 	const GRID_COLS = 12;
 	const ROW_HEIGHT = 60;
 
 	let {
 		colorScheme,
+		background,
 		widgets,
 		connections,
 		editable = false,
@@ -20,6 +28,7 @@
 		onRemoveWidget
 	}: {
 		colorScheme: string;
+		background?: DashboardBackground;
 		widgets: Widget[];
 		connections: DataConnection[];
 		editable?: boolean;
@@ -32,15 +41,39 @@
 
 	// While actively dragging/resizing a widget follows the pointer at the raw pixel
 	// position (no rounding) for direct-manipulation feel; only on release does it snap
-	// to the nearest grid cell, with a CSS transition animating the "snap".
-	let dragState = $state<{ id: string; left: number; top: number } | null>(null);
-	let resizeState = $state<{ id: string; width: number; height: number } | null>(null);
+	// to the nearest grid cell, with a CSS transition animating the "snap". If the
+	// snapped cell would overlap another widget, the update is discarded and the same
+	// transition animates the widget back to its original spot.
+	let dragState = $state<{ id: string; left: number; top: number; invalid: boolean } | null>(null);
+	let resizeState = $state<{ id: string; width: number; height: number; invalid: boolean } | null>(
+		null
+	);
 
 	function connectionFor(widget: Widget): DataConnection | undefined {
 		if (widget.kind === 'text') return undefined;
 		return connections.find(
 			(connection) => connection.id === widget.config.dataSource.connectionId
 		);
+	}
+
+	function layoutsCollide(a: WidgetLayout, b: WidgetLayout): boolean {
+		return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+	}
+
+	function hasCollision(widgetId: string, layout: WidgetLayout): boolean {
+		return widgets.some((other) => other.id !== widgetId && layoutsCollide(layout, other.layout));
+	}
+
+	function snappedDragLayout(widget: Widget, left: number, top: number): WidgetLayout {
+		const x = Math.max(0, Math.min(GRID_COLS - widget.layout.w, Math.round(left / cellWidth)));
+		const y = Math.max(0, Math.round(top / ROW_HEIGHT));
+		return { ...widget.layout, x, y };
+	}
+
+	function snappedResizeLayout(widget: Widget, width: number, height: number): WidgetLayout {
+		const w = Math.max(2, Math.min(GRID_COLS - widget.layout.x, Math.round(width / cellWidth)));
+		const h = Math.max(2, Math.round(height / ROW_HEIGHT));
+		return { ...widget.layout, w, h };
 	}
 
 	function startDrag(widget: Widget, event: PointerEvent) {
@@ -51,24 +84,23 @@
 		const startLeft = widget.layout.x * cellWidth;
 		const startTop = widget.layout.y * ROW_HEIGHT;
 		const maxLeft = (GRID_COLS - widget.layout.w) * cellWidth;
-		dragState = { id: widget.id, left: startLeft, top: startTop };
+		dragState = { id: widget.id, left: startLeft, top: startTop, invalid: false };
 
 		function onMove(moveEvent: PointerEvent) {
 			const left = Math.max(0, Math.min(maxLeft, startLeft + (moveEvent.clientX - startX)));
 			const top = Math.max(0, startTop + (moveEvent.clientY - startY));
-			dragState = { id: widget.id, left, top };
+			const invalid = hasCollision(widget.id, snappedDragLayout(widget, left, top));
+			dragState = { id: widget.id, left, top, invalid };
 		}
 
 		function onUp() {
 			window.removeEventListener('pointermove', onMove);
 			window.removeEventListener('pointerup', onUp);
 			if (dragState) {
-				const newX = Math.max(
-					0,
-					Math.min(GRID_COLS - widget.layout.w, Math.round(dragState.left / cellWidth))
-				);
-				const newY = Math.max(0, Math.round(dragState.top / ROW_HEIGHT));
-				onUpdateWidget({ ...widget, layout: { ...widget.layout, x: newX, y: newY } });
+				const layout = snappedDragLayout(widget, dragState.left, dragState.top);
+				if (!hasCollision(widget.id, layout)) {
+					onUpdateWidget({ ...widget, layout });
+				}
 			}
 			dragState = null;
 		}
@@ -85,7 +117,7 @@
 		const startWidth = widget.layout.w * cellWidth;
 		const startHeight = widget.layout.h * ROW_HEIGHT;
 		const maxWidth = (GRID_COLS - widget.layout.x) * cellWidth;
-		resizeState = { id: widget.id, width: startWidth, height: startHeight };
+		resizeState = { id: widget.id, width: startWidth, height: startHeight, invalid: false };
 
 		function onMove(moveEvent: PointerEvent) {
 			const width = Math.max(
@@ -93,19 +125,18 @@
 				Math.min(maxWidth, startWidth + (moveEvent.clientX - startX))
 			);
 			const height = Math.max(2 * ROW_HEIGHT, startHeight + (moveEvent.clientY - startY));
-			resizeState = { id: widget.id, width, height };
+			const invalid = hasCollision(widget.id, snappedResizeLayout(widget, width, height));
+			resizeState = { id: widget.id, width, height, invalid };
 		}
 
 		function onUp() {
 			window.removeEventListener('pointermove', onMove);
 			window.removeEventListener('pointerup', onUp);
 			if (resizeState) {
-				const newW = Math.max(
-					2,
-					Math.min(GRID_COLS - widget.layout.x, Math.round(resizeState.width / cellWidth))
-				);
-				const newH = Math.max(2, Math.round(resizeState.height / ROW_HEIGHT));
-				onUpdateWidget({ ...widget, layout: { ...widget.layout, w: newW, h: newH } });
+				const layout = snappedResizeLayout(widget, resizeState.width, resizeState.height);
+				if (!hasCollision(widget.id, layout)) {
+					onUpdateWidget({ ...widget, layout });
+				}
 			}
 			resizeState = null;
 		}
@@ -114,20 +145,42 @@
 		window.addEventListener('pointerup', onUp);
 	}
 
+	function openConfigWindow(widget: Widget) {
+		windowManager.open(`widget-config:${widget.id}`, { width: 340, height: 560 });
+	}
+
+	function openDataWindow(widget: Widget) {
+		windowManager.open(`widget-data:${widget.id}`, { width: 360, height: 480 });
+	}
+
+	function removeWidget(widget: Widget) {
+		windowManager.close(`widget-config:${widget.id}`);
+		windowManager.close(`widget-data:${widget.id}`);
+		onRemoveWidget(widget.id);
+	}
+
 	let scheme = $derived(getColorScheme(colorScheme));
 	let containerHeight = $derived(
 		Math.max(400, ...widgets.map((widget) => (widget.layout.y + widget.layout.h) * ROW_HEIGHT))
+	);
+	let gridStyle = $derived(
+		background?.showGrid
+			? `background-image: linear-gradient(to right, color-mix(in oklab, currentColor 12%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in oklab, currentColor 12%, transparent) 1px, transparent 1px); background-size: ${cellWidth}px ${ROW_HEIGHT}px;`
+			: ''
 	);
 </script>
 
 <div
 	bind:clientWidth={containerWidth}
 	class="relative w-full"
-	style={`height: ${containerHeight}px; --color-primary: ${scheme.primary}`}
+	style={`height: ${containerHeight}px; --color-primary: ${scheme.primary}; ${gridStyle}`}
 >
 	{#each widgets as widget (widget.id)}
 		{@const isDragging = dragState?.id === widget.id}
 		{@const isResizing = resizeState?.id === widget.id}
+		{@const isInvalid =
+			(isDragging && (dragState?.invalid ?? false)) ||
+			(isResizing && (resizeState?.invalid ?? false))}
 		{@const left = isDragging && dragState ? dragState.left : widget.layout.x * cellWidth}
 		{@const top = isDragging && dragState ? dragState.top : widget.layout.y * ROW_HEIGHT}
 		{@const width = isResizing && resizeState ? resizeState.width : widget.layout.w * cellWidth}
@@ -144,10 +197,12 @@
 				{editable}
 				dragging={isDragging}
 				resizing={isResizing}
+				invalid={isInvalid}
 				onDragStart={(event) => startDrag(widget, event)}
 				onResizeStart={(event) => startResize(widget, event)}
-				onRemove={() => onRemoveWidget(widget.id)}
-				onUpdate={onUpdateWidget}
+				onRemove={() => removeWidget(widget)}
+				onOpenConfig={() => openConfigWindow(widget)}
+				onOpenData={() => openDataWindow(widget)}
 			>
 				{#if widget.kind === 'text'}
 					<TextWidget {widget} />
@@ -160,3 +215,24 @@
 		</div>
 	{/each}
 </div>
+
+{#each widgets as widget (widget.id)}
+	<FloatingWindow
+		id={`widget-config:${widget.id}`}
+		title={`${widget.title} — settings`}
+		icon={SlidersIcon}
+		dockable={false}
+	>
+		<WidgetConfigPanel {widget} onChange={onUpdateWidget} />
+	</FloatingWindow>
+	{#if widget.kind !== 'text'}
+		<FloatingWindow
+			id={`widget-data:${widget.id}`}
+			title={`${widget.title} — data`}
+			icon={DatabaseIcon}
+			dockable={false}
+		>
+			<WidgetDataPanel {widget} onChange={onUpdateWidget} />
+		</FloatingWindow>
+	{/if}
+{/each}
