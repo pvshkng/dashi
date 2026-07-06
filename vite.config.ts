@@ -33,6 +33,12 @@ export default defineConfig({
 			extensions: ['.svelte', '.svx', '.md']
 		})
 	],
+	optimizeDeps: {
+		exclude: ['@duckdb/duckdb-wasm']
+	},
+	worker: {
+		format: 'es'
+	},
 	test: {
 		expect: {
 			requireAssertions: true

@@ -18,6 +18,17 @@ Thumbs.db
 !.env.example
 !.env.test
 
+# Local server-side connection secrets store
+/.data
+
+.claude/
+
+# Secrets / credentials
+*.pem
+*.key
+credentials.json
+secrets.json
+
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
