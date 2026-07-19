@@ -17,9 +17,78 @@ export interface DashboardPreset {
 	intro: string;
 	items: PresetItem[];
 	colorScheme: string;
+	theme?: string;
 }
 
 export const dashboardPresets: DashboardPreset[] = [
+	{
+		id: 'lavender-studio',
+		name: 'Lavender studio',
+		tagline: 'Neumorphic KPI board in soft purple',
+		description: 'Soft raised cards on a lavender canvas, styled after classic admin kits.',
+		intro:
+			'Mock sales KPIs on the lavender neumorphic theme. Swap the workflows for your own data.',
+		colorScheme: 'purple',
+		theme: 'neo-purple',
+		items: [
+			{ templateId: 'total-revenue', layout: { x: 0, y: 2, w: 4, h: 2 } },
+			{ templateId: 'monthly-revenue', layout: { x: 4, y: 0, w: 8, h: 4 } },
+			{ templateId: 'north-share', layout: { x: 0, y: 4, w: 2, h: 2 } },
+			{ templateId: 'avg-sale-value', layout: { x: 2, y: 4, w: 2, h: 2 } },
+			{ templateId: 'revenue-trend', layout: { x: 4, y: 4, w: 8, h: 4 } },
+			{ templateId: 'revenue-by-region', layout: { x: 0, y: 6, w: 4, h: 4 } },
+			{ templateId: 'sales-table', layout: { x: 4, y: 8, w: 8, h: 4 } },
+			{ templateId: 'total-units', layout: { x: 0, y: 10, w: 4, h: 2 } }
+		]
+	},
+	{
+		id: 'mint-ledger',
+		name: 'Mint ledger',
+		tagline: 'Spreadsheet-style board in fresh green',
+		description: 'Clean white cards with green accents, styled after office dashboard kits.',
+		intro: 'Mock sales KPIs on the mint neumorphic theme. Swap the workflows for your own data.',
+		colorScheme: 'mint',
+		theme: 'neo-mint',
+		items: [
+			{ templateId: 'total-units', layout: { x: 0, y: 2, w: 4, h: 2 } },
+			{
+				templateId: 'monthly-revenue',
+				layout: { x: 4, y: 0, w: 8, h: 4 },
+				title: 'Revenue generated'
+			},
+			{ templateId: 'units-by-region', layout: { x: 0, y: 4, w: 6, h: 4 } },
+			{ templateId: 'revenue-by-region', layout: { x: 6, y: 4, w: 6, h: 4 } },
+			{ templateId: 'revenue-trend', layout: { x: 0, y: 8, w: 8, h: 4 } },
+			{ templateId: 'avg-sale-value', layout: { x: 8, y: 8, w: 4, h: 2 } },
+			{ templateId: 'north-share', layout: { x: 8, y: 10, w: 4, h: 2 } }
+		]
+	},
+	{
+		id: 'midnight-glass',
+		name: 'Midnight glass',
+		tagline: 'Dark glassmorphic board in deep teal',
+		description: 'Translucent cards over a teal gradient, styled after dark consulting decks.',
+		intro: 'Mock sales KPIs on the midnight glass theme. Swap the workflows for your own data.',
+		colorScheme: 'glass',
+		theme: 'glass-teal',
+		items: [
+			{ templateId: 'total-revenue', layout: { x: 0, y: 2, w: 4, h: 2 } },
+			{
+				templateId: 'monthly-revenue',
+				layout: { x: 4, y: 0, w: 8, h: 4 },
+				title: 'Monthly sales'
+			},
+			{
+				templateId: 'revenue-trend',
+				layout: { x: 0, y: 4, w: 8, h: 4 },
+				title: 'Regional performance'
+			},
+			{ templateId: 'north-share', layout: { x: 8, y: 4, w: 4, h: 2 } },
+			{ templateId: 'avg-sale-value', layout: { x: 8, y: 6, w: 4, h: 2 } },
+			{ templateId: 'units-vs-revenue', layout: { x: 0, y: 8, w: 6, h: 4 } },
+			{ templateId: 'units-by-region', layout: { x: 6, y: 8, w: 6, h: 4 }, title: 'Product mix' }
+		]
+	},
 	{
 		id: 'sales',
 		name: 'Sales overview',
@@ -130,7 +199,8 @@ export async function loadDashboardPreset(preset: DashboardPreset): Promise<void
 		const template = templateById(item.templateId);
 		if (!template) continue;
 		const workflow = await instantiateTemplate(template, {
-			workflowId: `preset-${preset.id}-${template.id}`
+			workflowId: `preset-${preset.id}-${template.id}`,
+			chartScheme: preset.theme ? preset.colorScheme : undefined
 		});
 		widgets.push({
 			id: `preset-${preset.id}-${template.id}`,
@@ -141,7 +211,11 @@ export async function loadDashboardPreset(preset: DashboardPreset): Promise<void
 		});
 	}
 	workspaceStore.replaceWidgets(widgets);
-	workspaceStore.updateSettings({ name: preset.name, colorScheme: preset.colorScheme });
+	workspaceStore.updateSettings({
+		name: preset.name,
+		colorScheme: preset.colorScheme,
+		theme: preset.theme ?? 'classic'
+	});
 }
 
 function intro(preset: DashboardPreset): string {

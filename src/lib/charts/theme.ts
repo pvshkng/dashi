@@ -43,6 +43,24 @@ export const colorSchemes: ColorScheme[] = [
 		]
 	},
 	{
+		id: 'purple',
+		name: 'Purple',
+		primary: '#7C3AED',
+		colors: ['#7C3AED', '#DB2777', '#D97706', '#0284C7', '#059669']
+	},
+	{
+		id: 'mint',
+		name: 'Mint',
+		primary: '#059669',
+		colors: ['#059669', '#7C3AED', '#D97706', '#0284C7', '#DB2777']
+	},
+	{
+		id: 'glass',
+		name: 'Glass',
+		primary: '#0D9488',
+		colors: ['#0D9488', '#EC4899', '#D97706', '#3B82F6', '#C026D3']
+	},
+	{
 		id: 'grayscale',
 		name: 'Grayscale',
 		primary: 'oklch(0.4 0 0)',

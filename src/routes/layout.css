@@ -8,13 +8,13 @@
 @plugin '@tailwindcss/typography';
 
 .lc-root-container {
-	--color-primary: var(--color-blue-500);
+	--color-primary: var(--dash-chart-primary, var(--color-blue-500));
 
-	--color-surface-100: var(--color-white);
-	--color-surface-200: var(--color-gray-100);
-	--color-surface-300: var(--color-gray-300);
+	--color-surface-100: var(--dash-chart-surface-100, var(--color-white));
+	--color-surface-200: var(--dash-chart-surface-200, var(--color-gray-100));
+	--color-surface-300: var(--dash-chart-surface-300, var(--color-gray-300));
 
-	--color-surface-content: var(--color-gray-900);
+	--color-surface-content: var(--dash-chart-content, var(--color-gray-900));
 }
 
 :root {
@@ -151,14 +151,4 @@
 	html {
 		@apply font-mono;
 	}
-}
-
-.lc-root-container {
-	--color-primary: var(--color-blue-500);
-
-	--color-surface-100: var(--color-white);
-	--color-surface-200: var(--color-gray-100);
-	--color-surface-300: var(--color-gray-300);
-
-	--color-surface-content: var(--color-gray-900);
 }

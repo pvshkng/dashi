@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { workspaceStore } from '$lib/workspace/store.svelte';
 	import { colorSchemes } from '$lib/charts/theme';
+	import { dashboardThemes, getDashboardTheme } from '$lib/dashboard/themes';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import { Switch } from '$lib/components/ui/switch';
@@ -16,6 +17,29 @@
 			oninput={(event) =>
 				workspaceStore.updateSettings({ name: (event.target as HTMLInputElement).value })}
 		/>
+	</div>
+	<div class="space-y-1">
+		<Label>Theme</Label>
+		<Select.Root
+			type="single"
+			value={workspaceStore.settings.theme}
+			onValueChange={(value) => {
+				const theme = getDashboardTheme(value);
+				workspaceStore.updateSettings({ theme: theme.id, colorScheme: theme.colorScheme });
+			}}
+		>
+			<Select.Trigger class="w-full">
+				{getDashboardTheme(workspaceStore.settings.theme).name}
+			</Select.Trigger>
+			<Select.Content>
+				{#each dashboardThemes as theme (theme.id)}
+					<Select.Item value={theme.id} label={theme.name} />
+				{/each}
+			</Select.Content>
+		</Select.Root>
+		<p class="text-muted-foreground text-xs">
+			{getDashboardTheme(workspaceStore.settings.theme).description}
+		</p>
 	</div>
 	<div class="space-y-1">
 		<Label>Color scheme</Label>
