@@ -5,6 +5,7 @@
 	import AddWidgetDialog from '$lib/dashboard/AddWidgetDialog.svelte';
 	import MenuBar from '$lib/components/dock/MenuBar.svelte';
 	import { innerWidth } from 'svelte/reactivity/window';
+	import { getDashboardTheme, themeStyle } from '$lib/dashboard/themes';
 	import XIcon from 'phosphor-svelte/lib/X';
 
 	let editable = $state(false);
@@ -39,18 +40,16 @@
 	function onKeydown(event: KeyboardEvent) {
 		if (event.key === 'Escape' && presenting) stopPresenting();
 	}
+
+	let theme = $derived(getDashboardTheme(workspaceStore.settings.theme));
+	let canvasStyle = $derived(themeStyle(theme, workspaceStore.settings.backgroundColor));
 </script>
 
 <svelte:head><title>Dashboard — Dashi</title></svelte:head>
 <svelte:document onfullscreenchange={onFullscreenChange} />
 <svelte:window onkeydown={onKeydown} />
 
-<div
-	class="min-h-[100vh]"
-	style={workspaceStore.settings.backgroundColor
-		? `background-color: ${workspaceStore.settings.backgroundColor}`
-		: ''}
->
+<div class="min-h-[100vh]" style={canvasStyle}>
 	<main class="p-4 pb-24">
 		<Dashboard
 			colorScheme={workspaceStore.settings.colorScheme}
@@ -78,9 +77,7 @@
 	<div
 		bind:this={presentEl}
 		class="bg-background fixed inset-0 z-80 overflow-auto"
-		style={workspaceStore.settings.backgroundColor
-			? `background-color: ${workspaceStore.settings.backgroundColor}`
-			: ''}
+		style={canvasStyle}
 	>
 		<main class="p-8">
 			<Dashboard

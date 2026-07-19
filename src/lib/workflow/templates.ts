@@ -1,5 +1,5 @@
 import type { Widget } from '$lib/widgets/types';
-import type { Workflow, WorkflowEdge, WorkflowNode } from './types';
+import type { ChartNodeConfig, Workflow, WorkflowEdge, WorkflowNode } from './types';
 import { mockConnectionId, mockCsvConnection, seedMockData } from '$lib/widgets/mock';
 import { installSampleById, sampleConnectionId } from '$lib/data/sampleDatasets';
 import { connectionsStore } from '$lib/connections/store.svelte';
@@ -151,6 +151,182 @@ export const workflowTemplates: WorkflowTemplate[] = [
 					label: 'Total revenue',
 					position: at(2),
 					config: { column: 'total', label: 'Total revenue', prefix: '$' }
+				}
+			])
+	},
+	{
+		id: 'revenue-trend',
+		name: 'Revenue trend',
+		description: 'Area chart of total revenue over the months.',
+		thumb: 'area',
+		dataLabel: 'Mock sales',
+		usesMock: true,
+		primaryNodeId: 'out',
+		widgetSize: { w: 6, h: 4 },
+		build: () =>
+			chain([
+				sqlNode(
+					`select strptime(month || ' 2024', '%b %Y')::date as month, sum(revenue) as revenue\nfrom mock_sales\ngroup by 1\norder by 1`,
+					'Revenue by month'
+				),
+				{
+					id: 'out',
+					kind: 'chart',
+					label: 'Revenue trend',
+					position: at(1),
+					config: { chartType: 'area', x: 'month', y: 'revenue', colorScheme: 'blue' }
+				}
+			])
+	},
+	{
+		id: 'monthly-units',
+		name: 'Units sold trend',
+		description: 'Line chart of units sold per month.',
+		thumb: 'line',
+		dataLabel: 'Mock sales',
+		usesMock: true,
+		primaryNodeId: 'out',
+		widgetSize: { w: 6, h: 4 },
+		build: () =>
+			chain([
+				sqlNode(
+					`select strptime(month || ' 2024', '%b %Y')::date as month, sum(units) as units\nfrom mock_sales\ngroup by 1\norder by 1`,
+					'Units by month'
+				),
+				{
+					id: 'out',
+					kind: 'chart',
+					label: 'Units sold',
+					position: at(1),
+					config: { chartType: 'line', x: 'month', y: 'units', colorScheme: 'blue' }
+				}
+			])
+	},
+	{
+		id: 'units-by-region',
+		name: 'Units by region',
+		description: 'Bar chart of units sold per region.',
+		thumb: 'bar',
+		dataLabel: 'Mock sales',
+		usesMock: true,
+		primaryNodeId: 'out',
+		widgetSize: { w: 6, h: 4 },
+		build: () =>
+			chain([
+				tableNode(mockConnectionId, 'mock_sales', 'Sales table'),
+				{
+					id: 'agg',
+					kind: 'aggregate',
+					label: 'Sum by region',
+					position: at(1),
+					config: {
+						groupBy: ['region'],
+						aggregates: [{ fn: 'sum', column: 'units', alias: 'units' }]
+					}
+				},
+				{
+					id: 'out',
+					kind: 'chart',
+					label: 'Units by region',
+					position: at(2),
+					config: { chartType: 'bar', x: 'region', y: 'units', colorScheme: 'blue' }
+				}
+			])
+	},
+	{
+		id: 'total-units',
+		name: 'Total units',
+		description: 'Single number metric of units sold.',
+		thumb: 'metric',
+		dataLabel: 'Mock sales',
+		usesMock: true,
+		primaryNodeId: 'out',
+		widgetSize: { w: 3, h: 2 },
+		build: () =>
+			chain([
+				tableNode(mockConnectionId, 'mock_sales', 'Sales table'),
+				{
+					id: 'agg',
+					kind: 'aggregate',
+					label: 'Total',
+					position: at(1),
+					config: { groupBy: [], aggregates: [{ fn: 'sum', column: 'units', alias: 'total' }] }
+				},
+				{
+					id: 'out',
+					kind: 'metric',
+					label: 'Total units',
+					position: at(2),
+					config: { column: 'total', label: 'Units sold' }
+				}
+			])
+	},
+	{
+		id: 'avg-sale-value',
+		name: 'Average sale value',
+		description: 'Revenue per unit sold as a single number.',
+		thumb: 'metric',
+		dataLabel: 'Mock sales',
+		usesMock: true,
+		primaryNodeId: 'out',
+		widgetSize: { w: 3, h: 2 },
+		build: () =>
+			chain([
+				sqlNode(
+					`select round(sum(revenue) * 1.0 / sum(units), 2) as avg_value from mock_sales`,
+					'Revenue per unit'
+				),
+				{
+					id: 'out',
+					kind: 'metric',
+					label: 'Average sale value',
+					position: at(1),
+					config: { column: 'avg_value', label: 'Per unit', prefix: '$' }
+				}
+			])
+	},
+	{
+		id: 'north-share',
+		name: 'North region share',
+		description: 'Share of revenue coming from the North region.',
+		thumb: 'metric',
+		dataLabel: 'Mock sales',
+		usesMock: true,
+		primaryNodeId: 'out',
+		widgetSize: { w: 3, h: 2 },
+		build: () =>
+			chain([
+				sqlNode(
+					`select round(100.0 * sum(revenue) filter (where region = 'North') / sum(revenue)) as share\nfrom mock_sales`,
+					'North share'
+				),
+				{
+					id: 'out',
+					kind: 'metric',
+					label: 'North share',
+					position: at(1),
+					config: { column: 'share', label: 'Revenue from North', suffix: '%' }
+				}
+			])
+	},
+	{
+		id: 'sales-table',
+		name: 'Sales table',
+		description: 'Browsable table of the raw sales rows.',
+		thumb: 'table',
+		dataLabel: 'Mock sales',
+		usesMock: true,
+		primaryNodeId: 'out',
+		widgetSize: { w: 12, h: 4 },
+		build: () =>
+			chain([
+				tableNode(mockConnectionId, 'mock_sales', 'Sales table'),
+				{
+					id: 'out',
+					kind: 'grid',
+					label: 'Sales rows',
+					position: at(1),
+					config: { pageSize: 10 }
 				}
 			])
 	},
@@ -562,11 +738,18 @@ export async function ensureTemplateData(template: WorkflowTemplate): Promise<vo
 
 export async function instantiateTemplate(
 	template: WorkflowTemplate,
-	options: { workflowId?: string } = {}
+	options: { workflowId?: string; chartScheme?: string } = {}
 ): Promise<Workflow> {
 	await ensureTemplateData(template);
 	const now = Date.now();
 	const { nodes, edges } = template.build();
+	if (options.chartScheme) {
+		for (const node of nodes) {
+			if (node.kind === 'chart') {
+				(node.config as ChartNodeConfig).colorScheme = options.chartScheme;
+			}
+		}
+	}
 	const workflow: Workflow = {
 		id: options.workflowId ?? crypto.randomUUID(),
 		name: template.name,

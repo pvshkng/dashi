@@ -52,12 +52,25 @@
 	let bare = $derived(widget.kind === 'shape');
 	let containerStyle = $derived(
 		[
-			style?.backgroundColor && `background-color: ${style.backgroundColor}`,
+			style?.backgroundColor
+				? `background-color: ${style.backgroundColor}`
+				: !bare &&
+					'background: var(--dash-card-bg, color-mix(in oklab, var(--background) 50%, transparent))',
 			style?.textColor && `color: ${style.textColor}`,
-			style?.borderColor && `border-color: ${style.borderColor}`,
+			style?.borderColor
+				? `border-color: ${style.borderColor}`
+				: !bare && 'border-color: var(--dash-card-border, var(--border))',
 			`border-width: ${style?.borderWidth ?? (bare ? 0 : 1)}px`,
-			`border-radius: ${style?.borderRadius ?? 8}px`,
-			style?.shadow && `box-shadow: ${shadows[style.shadow]}`,
+			`border-radius: ${
+				style?.borderRadius !== undefined
+					? `${style.borderRadius}px`
+					: bare
+						? '8px'
+						: 'var(--dash-card-radius, 8px)'
+			}`,
+			style?.shadow
+				? `box-shadow: ${shadows[style.shadow]}`
+				: !bare && 'box-shadow: var(--dash-card-shadow, none)',
 			style?.opacity !== undefined && `opacity: ${style.opacity / 100}`,
 			style?.fontSize && `font-size: ${style.fontSize}px`,
 			style?.fontFamily && `font-family: ${fontFamilies[style.fontFamily]}`,
@@ -73,7 +86,6 @@
 	class={cn(
 		'group/shell relative flex h-full w-full flex-col overflow-hidden border',
 		!bare && 'backdrop-blur-md',
-		!style?.backgroundColor && !bare && 'bg-background/50',
 		editable && chromeless && 'cursor-grab active:cursor-grabbing',
 		(dragging || resizing) &&
 			(invalid ? 'ring-destructive shadow-lg ring-2' : 'ring-primary shadow-lg ring-2'),

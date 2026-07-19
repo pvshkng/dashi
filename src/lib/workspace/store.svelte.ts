@@ -16,6 +16,7 @@ export type DashboardLayoutMode = 'grid' | 'free';
 export interface DashboardSettings {
 	name: string;
 	colorScheme: string;
+	theme: string;
 	showGrid: boolean;
 	layoutMode: DashboardLayoutMode;
 	backgroundColor?: string;
@@ -24,6 +25,7 @@ export interface DashboardSettings {
 const defaultSettings: DashboardSettings = {
 	name: 'My dashboard',
 	colorScheme: 'blue',
+	theme: 'classic',
 	showGrid: true,
 	layoutMode: 'grid'
 };
