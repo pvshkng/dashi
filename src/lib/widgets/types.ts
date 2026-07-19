@@ -5,34 +5,20 @@ export interface WidgetLayout {
 	h: number;
 }
 
-export type ChartType = 'line' | 'bar' | 'area' | 'scatter' | 'pie';
-
-export interface DataSourceRef {
-	connectionId: string;
-	sql: string;
-}
-
 export interface TextWidgetConfig {
 	content: string;
 }
 
-export interface TableWidgetConfig {
-	dataSource: DataSourceRef;
+/** Points at a visualization node inside a workflow. */
+export interface VizWidgetConfig {
+	workflowId: string;
+	nodeId: string;
 }
 
-export interface ChartWidgetConfig {
-	dataSource: DataSourceRef;
-	chartType: ChartType;
-	x: string;
-	y: string;
-	series?: string;
-	colorScheme: string;
-}
-
-export type WidgetKind = 'text' | 'table' | 'chart';
+export type WidgetKind = 'text' | 'viz';
 
 /**
- * Visual customization for a widget, edited via the palette popover.
+ * Visual customization for a widget, edited via the settings window.
  * Every field is optional; unset fields fall back to the app defaults.
  */
 export interface WidgetStyle {
@@ -61,22 +47,9 @@ export interface TextWidget extends WidgetBase {
 	config: TextWidgetConfig;
 }
 
-export interface TableWidget extends WidgetBase {
-	kind: 'table';
-	config: TableWidgetConfig;
+export interface VizWidget extends WidgetBase {
+	kind: 'viz';
+	config: VizWidgetConfig;
 }
 
-export interface ChartWidget extends WidgetBase {
-	kind: 'chart';
-	config: ChartWidgetConfig;
-}
-
-export type Widget = TextWidget | TableWidget | ChartWidget;
-
-export interface Dashboard {
-	id: string;
-	name: string;
-	createdAt: number;
-	widgetIds: string[];
-	colorScheme: string;
-}
+export type Widget = TextWidget | VizWidget;

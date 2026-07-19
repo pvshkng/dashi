@@ -53,7 +53,7 @@ class ConnectionsStore {
 	}
 
 	async addServerConnection(
-		connection: Extract<DataConnection, { kind: 'postgres' | 'sqlite' }>
+		connection: Extract<DataConnection, { kind: 'postgres' | 'mysql' | 'sqlite' }>
 	): Promise<void> {
 		await set(metadataKey(connection.id), connection);
 		this.connections = [...this.connections, connection];

@@ -1,4 +1,3 @@
-/// <reference types="vitest/config" />
 import { mdsvex } from 'mdsvex';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';

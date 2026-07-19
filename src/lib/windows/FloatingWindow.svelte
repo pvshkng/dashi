@@ -9,6 +9,13 @@
 	import ArrowsOutSimpleIcon from 'phosphor-svelte/lib/ArrowsOutSimple';
 
 	const EDGE_SNAP_THRESHOLD = 24;
+	// Windows move freely while dragging and settle onto this grid on release,
+	// matching how dashboard widgets snap.
+	const GRID = 16;
+
+	function snap(value: number): number {
+		return Math.round(value / GRID) * GRID;
+	}
 
 	let {
 		id,
@@ -60,7 +67,12 @@
 			window.removeEventListener('pointerup', onUp);
 			const edge = edgeUnderPointer(upEvent.clientX);
 			snapPreview = null;
-			if (edge) windowManager.dock(id, edge);
+			if (edge) {
+				windowManager.dock(id, edge);
+			} else {
+				win.x = Math.max(8, snap(win.x));
+				win.y = Math.max(8, snap(win.y));
+			}
 		}
 		window.addEventListener('pointermove', onMove);
 		window.addEventListener('pointerup', onUp);
@@ -81,6 +93,8 @@
 		function onUp() {
 			window.removeEventListener('pointermove', onMove);
 			window.removeEventListener('pointerup', onUp);
+			win.width = Math.max(320, snap(win.width));
+			win.height = Math.max(240, snap(win.height));
 		}
 		window.addEventListener('pointermove', onMove);
 		window.addEventListener('pointerup', onUp);

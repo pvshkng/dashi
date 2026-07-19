@@ -36,3 +36,47 @@ export async function runQuery(sql: string): Promise<Record<string, unknown>[]> 
 		await conn.close();
 	}
 }
+
+export interface LocalQueryResult {
+	columns: string[];
+	rows: Record<string, unknown>[];
+}
+
+/** Like runQuery, but keeps column order/names even for empty results. */
+export async function runQueryWithColumns(sql: string): Promise<LocalQueryResult> {
+	const db = await getDuckDB();
+	const conn = await db.connect();
+	try {
+		const result = await conn.query(sql);
+		const columns = result.schema.fields.map((field) => field.name);
+		const rows = result.toArray().map((row) => row.toJSON());
+		return { columns, rows };
+	} finally {
+		await conn.close();
+	}
+}
+
+/** Materialize fetched rows (e.g. from a server connection) as a local table. */
+export async function materializeRows(
+	tableName: string,
+	columns: string[],
+	rows: Record<string, unknown>[]
+): Promise<void> {
+	const db = await getDuckDB();
+	const conn = await db.connect();
+	try {
+		if (rows.length === 0) {
+			const cols = columns.length > 0 ? columns : ['value'];
+			const decl = cols.map((c) => `"${c.replaceAll('"', '""')}" varchar`).join(', ');
+			await conn.query(`create or replace table "${tableName}" (${decl})`);
+			return;
+		}
+		const fileName = `${tableName}.json`;
+		await db.registerFileText(fileName, JSON.stringify(rows));
+		await conn.query(
+			`create or replace table "${tableName}" as select * from read_json_auto('${fileName}')`
+		);
+	} finally {
+		await conn.close();
+	}
+}

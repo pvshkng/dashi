@@ -1,37 +1,34 @@
 <script lang="ts">
 	import type { Widget, WidgetLayout } from '$lib/widgets/types';
-	import type { DataConnection } from '$lib/connections/types';
-	import type { DashboardBackground } from '$lib/dashi/types';
 	import WidgetShell from './WidgetShell.svelte';
 	import WidgetConfigPanel from './WidgetConfigPanel.svelte';
-	import WidgetDataPanel from './WidgetDataPanel.svelte';
-	import ChartWidget from '$lib/widgets/ChartWidget.svelte';
-	import TableWidget from '$lib/widgets/TableWidget.svelte';
+	import VizWidget from '$lib/widgets/VizWidget.svelte';
 	import TextWidget from '$lib/widgets/TextWidget.svelte';
 	import FloatingWindow from '$lib/windows/FloatingWindow.svelte';
 	import { windowManager } from '$lib/windows/manager.svelte';
 	import { getColorScheme } from '$lib/charts/theme';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { cn } from '$lib/utils';
 	import SlidersIcon from 'phosphor-svelte/lib/Sliders';
-	import DatabaseIcon from 'phosphor-svelte/lib/Database';
 
 	const GRID_COLS = 12;
 	const ROW_HEIGHT = 60;
 
 	let {
 		colorScheme,
-		background,
+		showGrid = false,
 		widgets,
-		connections,
 		editable = false,
+		mobile = false,
 		onUpdateWidget,
 		onRemoveWidget
 	}: {
 		colorScheme: string;
-		background?: DashboardBackground;
+		showGrid?: boolean;
 		widgets: Widget[];
-		connections: DataConnection[];
 		editable?: boolean;
+		mobile?: boolean;
 		onUpdateWidget: (widget: Widget) => void;
 		onRemoveWidget: (widgetId: string) => void;
 	} = $props();
@@ -40,21 +37,12 @@
 	let cellWidth = $derived(containerWidth / GRID_COLS);
 
 	// While actively dragging/resizing a widget follows the pointer at the raw pixel
-	// position (no rounding) for direct-manipulation feel; only on release does it snap
-	// to the nearest grid cell, with a CSS transition animating the "snap". If the
-	// snapped cell would overlap another widget, the update is discarded and the same
-	// transition animates the widget back to its original spot.
+	// position; on release it snaps to the nearest grid cell. Overlapping drops are
+	// discarded and the widget animates back.
 	let dragState = $state<{ id: string; left: number; top: number; invalid: boolean } | null>(null);
 	let resizeState = $state<{ id: string; width: number; height: number; invalid: boolean } | null>(
 		null
 	);
-
-	function connectionFor(widget: Widget): DataConnection | undefined {
-		if (widget.kind === 'text') return undefined;
-		return connections.find(
-			(connection) => connection.id === widget.config.dataSource.connectionId
-		);
-	}
 
 	function layoutsCollide(a: WidgetLayout, b: WidgetLayout): boolean {
 		return a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
@@ -77,7 +65,7 @@
 	}
 
 	function startDrag(widget: Widget, event: PointerEvent) {
-		if (!editable) return;
+		if (!editable || mobile) return;
 		event.preventDefault();
 		const startX = event.clientX;
 		const startY = event.clientY;
@@ -110,7 +98,7 @@
 	}
 
 	function startResize(widget: Widget, event: PointerEvent) {
-		if (!editable) return;
+		if (!editable || mobile) return;
 		event.preventDefault();
 		const startX = event.clientX;
 		const startY = event.clientY;
@@ -149,72 +137,100 @@
 		windowManager.open(`widget-config:${widget.id}`, { width: 340, height: 560 });
 	}
 
-	function openDataWindow(widget: Widget) {
-		windowManager.open(`widget-data:${widget.id}`, { width: 360, height: 480 });
+	function openWorkflow(widget: Widget) {
+		if (widget.kind === 'viz') goto(resolve('/workflows/[id]', { id: widget.config.workflowId }));
 	}
 
 	function removeWidget(widget: Widget) {
 		windowManager.close(`widget-config:${widget.id}`);
-		windowManager.close(`widget-data:${widget.id}`);
 		onRemoveWidget(widget.id);
 	}
 
 	let scheme = $derived(getColorScheme(colorScheme));
+	// Mobile reads widgets in visual order: top to bottom, then left to right.
+	let orderedWidgets = $derived(
+		[...widgets].sort((a, b) => a.layout.y - b.layout.y || a.layout.x - b.layout.x)
+	);
 	let containerHeight = $derived(
 		Math.max(400, ...widgets.map((widget) => (widget.layout.y + widget.layout.h) * ROW_HEIGHT))
 	);
 	let gridStyle = $derived(
-		background?.showGrid
+		showGrid && !mobile
 			? `background-image: linear-gradient(to right, color-mix(in oklab, currentColor 12%, transparent) 1px, transparent 1px), linear-gradient(to bottom, color-mix(in oklab, currentColor 12%, transparent) 1px, transparent 1px); background-size: ${cellWidth}px ${ROW_HEIGHT}px;`
 			: ''
 	);
 </script>
 
-<div
-	bind:clientWidth={containerWidth}
-	class="relative w-full"
-	style={`height: ${containerHeight}px; --color-primary: ${scheme.primary}; ${gridStyle}`}
->
-	{#each widgets as widget (widget.id)}
-		{@const isDragging = dragState?.id === widget.id}
-		{@const isResizing = resizeState?.id === widget.id}
-		{@const isInvalid =
-			(isDragging && (dragState?.invalid ?? false)) ||
-			(isResizing && (resizeState?.invalid ?? false))}
-		{@const left = isDragging && dragState ? dragState.left : widget.layout.x * cellWidth}
-		{@const top = isDragging && dragState ? dragState.top : widget.layout.y * ROW_HEIGHT}
-		{@const width = isResizing && resizeState ? resizeState.width : widget.layout.w * cellWidth}
-		{@const height = isResizing && resizeState ? resizeState.height : widget.layout.h * ROW_HEIGHT}
-		<div
-			class={cn(
-				'absolute p-1',
-				!isDragging && !isResizing && 'transition-[left,top,width,height] duration-150 ease-out'
-			)}
-			style={`left: ${left}px; top: ${top}px; width: ${width}px; height: ${height}px; z-index: ${isDragging || isResizing ? 10 : 1};`}
-		>
-			<WidgetShell
-				{widget}
-				{editable}
-				dragging={isDragging}
-				resizing={isResizing}
-				invalid={isInvalid}
-				onDragStart={(event) => startDrag(widget, event)}
-				onResizeStart={(event) => startResize(widget, event)}
-				onRemove={() => removeWidget(widget)}
-				onOpenConfig={() => openConfigWindow(widget)}
-				onOpenData={() => openDataWindow(widget)}
+{#snippet widgetBody(widget: Widget)}
+	{#if widget.kind === 'text'}
+		<TextWidget {widget} />
+	{:else if widget.kind === 'viz'}
+		<VizWidget {widget} />
+	{/if}
+{/snippet}
+
+{#if mobile}
+	<div
+		class="mx-auto flex w-full max-w-xl flex-col gap-3"
+		style={`--color-primary: ${scheme.primary}`}
+	>
+		{#each orderedWidgets as widget (widget.id)}
+			<div style={`height: ${Math.max(2, widget.layout.h) * ROW_HEIGHT}px`}>
+				<WidgetShell
+					{widget}
+					editable={false}
+					onDragStart={() => {}}
+					onResizeStart={() => {}}
+					onRemove={() => removeWidget(widget)}
+					onOpenConfig={() => openConfigWindow(widget)}
+				>
+					{@render widgetBody(widget)}
+				</WidgetShell>
+			</div>
+		{/each}
+	</div>
+{:else}
+	<div
+		bind:clientWidth={containerWidth}
+		class="relative w-full"
+		style={`height: ${containerHeight}px; --color-primary: ${scheme.primary}; ${gridStyle}`}
+	>
+		{#each widgets as widget (widget.id)}
+			{@const isDragging = dragState?.id === widget.id}
+			{@const isResizing = resizeState?.id === widget.id}
+			{@const isInvalid =
+				(isDragging && (dragState?.invalid ?? false)) ||
+				(isResizing && (resizeState?.invalid ?? false))}
+			{@const left = isDragging && dragState ? dragState.left : widget.layout.x * cellWidth}
+			{@const top = isDragging && dragState ? dragState.top : widget.layout.y * ROW_HEIGHT}
+			{@const width = isResizing && resizeState ? resizeState.width : widget.layout.w * cellWidth}
+			{@const height =
+				isResizing && resizeState ? resizeState.height : widget.layout.h * ROW_HEIGHT}
+			<div
+				class={cn(
+					'absolute p-1',
+					!isDragging && !isResizing && 'transition-[left,top,width,height] duration-150 ease-out'
+				)}
+				style={`left: ${left}px; top: ${top}px; width: ${width}px; height: ${height}px; z-index: ${isDragging || isResizing ? 10 : 1};`}
 			>
-				{#if widget.kind === 'text'}
-					<TextWidget {widget} />
-				{:else if widget.kind === 'table'}
-					<TableWidget {widget} connection={connectionFor(widget)} />
-				{:else if widget.kind === 'chart'}
-					<ChartWidget {widget} connection={connectionFor(widget)} />
-				{/if}
-			</WidgetShell>
-		</div>
-	{/each}
-</div>
+				<WidgetShell
+					{widget}
+					{editable}
+					dragging={isDragging}
+					resizing={isResizing}
+					invalid={isInvalid}
+					onDragStart={(event) => startDrag(widget, event)}
+					onResizeStart={(event) => startResize(widget, event)}
+					onRemove={() => removeWidget(widget)}
+					onOpenConfig={() => openConfigWindow(widget)}
+					onOpenWorkflow={() => openWorkflow(widget)}
+				>
+					{@render widgetBody(widget)}
+				</WidgetShell>
+			</div>
+		{/each}
+	</div>
+{/if}
 
 {#each widgets as widget (widget.id)}
 	<FloatingWindow
@@ -225,14 +241,4 @@
 	>
 		<WidgetConfigPanel {widget} onChange={onUpdateWidget} />
 	</FloatingWindow>
-	{#if widget.kind !== 'text'}
-		<FloatingWindow
-			id={`widget-data:${widget.id}`}
-			title={`${widget.title} — data`}
-			icon={DatabaseIcon}
-			dockable={false}
-		>
-			<WidgetDataPanel {widget} onChange={onUpdateWidget} />
-		</FloatingWindow>
-	{/if}
 {/each}

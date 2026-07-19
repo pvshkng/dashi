@@ -26,8 +26,15 @@
 		excel: 'Excel file',
 		parquet: 'Parquet file',
 		postgres: 'Postgres',
+		mysql: 'MySQL',
 		sqlite: 'SQLite'
 	};
+
+	function setKind(value: ConnectionKind) {
+		kind = value;
+		if (kind === 'mysql') port = 3306;
+		else if (kind === 'postgres') port = 5432;
+	}
 
 	function resetForm() {
 		name = '';
@@ -66,7 +73,7 @@
 					: { id, name: name || file.name, createdAt, kind, fileName: file.name, tableName },
 				file
 			);
-		} else if (kind === 'postgres') {
+		} else if (kind === 'postgres' || kind === 'mysql') {
 			const connection = {
 				id,
 				name: name || database,
@@ -99,7 +106,11 @@
 	}
 
 	async function removeConnection(connection: DataConnection) {
-		if (connection.kind === 'postgres' || connection.kind === 'sqlite') {
+		if (
+			connection.kind === 'postgres' ||
+			connection.kind === 'mysql' ||
+			connection.kind === 'sqlite'
+		) {
 			await fetch(`/api/connections?id=${connection.id}`, { method: 'DELETE' });
 		}
 		await connectionsStore.remove(connection.id);
@@ -121,7 +132,11 @@
 			<div class="space-y-4">
 				<div class="space-y-1">
 					<Label>Type</Label>
-					<Select.Root type="single" bind:value={kind}>
+					<Select.Root
+						type="single"
+						value={kind}
+						onValueChange={(value) => setKind(value as ConnectionKind)}
+					>
 						<Select.Trigger>{kindLabels[kind]}</Select.Trigger>
 						<Select.Content>
 							{#each Object.entries(kindLabels) as [value, label] (value)}
@@ -151,7 +166,7 @@
 							<Input bind:value={sheetName} placeholder="Sheet1" />
 						</div>
 					{/if}
-				{:else if kind === 'postgres'}
+				{:else if kind === 'postgres' || kind === 'mysql'}
 					<div class="grid grid-cols-2 gap-2">
 						<div class="space-y-1">
 							<Label>Host</Label>

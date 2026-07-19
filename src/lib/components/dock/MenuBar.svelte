@@ -2,47 +2,32 @@
 	import * as Menubar from '$lib/components/ui/menubar';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
-	import { dashiStore } from '$lib/dashi/store.svelte';
+	import { workspaceStore } from '$lib/workspace/store.svelte';
+	import { loadExampleWorkspace } from '$lib/workspace/example';
 	import { windowManager } from '$lib/windows/manager.svelte';
-	import type { Widget, WidgetKind } from '$lib/widgets/types';
 	import { cn } from '$lib/utils';
 	import EyeIcon from 'phosphor-svelte/lib/Eye';
 	import PencilSimpleIcon from 'phosphor-svelte/lib/PencilSimple';
+	import PlusIcon from 'phosphor-svelte/lib/Plus';
+	import DesktopIcon from 'phosphor-svelte/lib/Desktop';
+	import DeviceMobileIcon from 'phosphor-svelte/lib/DeviceMobile';
+
+	let {
+		editable = $bindable(false),
+		mobilePreview = $bindable(false),
+		onAddWidget
+	}: {
+		editable?: boolean;
+		mobilePreview?: boolean;
+		onAddWidget: () => void;
+	} = $props();
 
 	let fileInput: HTMLInputElement | undefined = $state();
 
-	function onFileChosen(event: Event) {
+	async function onFileChosen(event: Event) {
 		const file = (event.target as HTMLInputElement).files?.[0];
-		if (file) dashiStore.openFile(file);
+		if (file) await workspaceStore.importFile(file);
 		if (fileInput) fileInput.value = '';
-	}
-
-	function defaultWidget(kind: WidgetKind): Widget {
-		const id = crypto.randomUUID();
-		const layout = { x: 0, y: 0, w: 6, h: 4 };
-		if (kind === 'text') {
-			return { id, title: 'Text', kind, layout, config: { content: 'New text widget' } };
-		}
-		const dataSource = {
-			connectionId: dashiStore.doc?.connections[0]?.id ?? '',
-			sql: 'select * from my_table'
-		};
-		if (kind === 'table') {
-			return { id, title: 'Table', kind, layout, config: { dataSource } };
-		}
-		return {
-			id,
-			title: 'Chart',
-			kind,
-			layout,
-			config: {
-				dataSource,
-				chartType: 'line',
-				x: '',
-				y: '',
-				colorScheme: dashiStore.doc?.colorScheme ?? 'blue'
-			}
-		};
 	}
 </script>
 
@@ -63,30 +48,15 @@
 			<Menubar.Menu>
 				<Menubar.Trigger>File</Menubar.Trigger>
 				<Menubar.Content side="top" align="start">
-					<Menubar.Item onclick={() => dashiStore.newDashboard('Untitled dashboard')}>
-						New dashboard
-					</Menubar.Item>
-					<Menubar.Item onclick={() => fileInput?.click()}>Open .dashi…</Menubar.Item>
-					<Menubar.Item onclick={() => dashiStore.openExample()}>Open example</Menubar.Item>
+					<Menubar.Item onclick={() => workspaceStore.exportFile()}>Export .dashi</Menubar.Item>
+					<Menubar.Item onclick={() => fileInput?.click()}>Import .dashi…</Menubar.Item>
 					<Menubar.Separator />
-					<Menubar.Item disabled={!dashiStore.doc} onclick={() => dashiStore.saveToFile()}>
-						Save as .dashi
-					</Menubar.Item>
-					<Menubar.Separator />
-					<Menubar.Item disabled={!dashiStore.doc} onclick={() => dashiStore.closeDocument()}>
-						Close dashboard
-					</Menubar.Item>
+					<Menubar.Item onclick={() => loadExampleWorkspace()}>Load example</Menubar.Item>
 				</Menubar.Content>
 			</Menubar.Menu>
 			<Menubar.Menu>
 				<Menubar.Trigger>Windows</Menubar.Trigger>
 				<Menubar.Content side="top" align="start">
-					<Menubar.CheckboxItem
-						checked={windowManager.windows.sql.open}
-						onclick={() => windowManager.toggle('sql')}
-					>
-						SQL editor
-					</Menubar.CheckboxItem>
 					<Menubar.CheckboxItem
 						checked={windowManager.windows.connections.open}
 						onclick={() => windowManager.toggle('connections')}
@@ -97,53 +67,64 @@
 						checked={windowManager.windows.settings.open}
 						onclick={() => windowManager.toggle('settings')}
 					>
-						Settings
+						Dashboard settings
 					</Menubar.CheckboxItem>
 				</Menubar.Content>
 			</Menubar.Menu>
-			{#if dashiStore.doc && dashiStore.mode === 'edit'}
-				<Menubar.Menu>
-					<Menubar.Trigger>Add</Menubar.Trigger>
-					<Menubar.Content side="top" align="start">
-						<Menubar.Item onclick={() => dashiStore.addWidget(defaultWidget('text'))}>
-							Text widget
-						</Menubar.Item>
-						<Menubar.Item onclick={() => dashiStore.addWidget(defaultWidget('table'))}>
-							Table widget
-						</Menubar.Item>
-						<Menubar.Item onclick={() => dashiStore.addWidget(defaultWidget('chart'))}>
-							Chart widget
-						</Menubar.Item>
-					</Menubar.Content>
-				</Menubar.Menu>
-			{/if}
 		</Menubar.Root>
 
-		{#if dashiStore.doc}
-			<Separator orientation="vertical" class="mx-1 h-5!" />
-			<span class="text-muted-foreground max-w-40 truncate px-1 text-xs">
-				{dashiStore.doc.name}
-			</span>
-			<div class="bg-muted flex items-center rounded-full p-0.5">
-				<Button
-					variant="ghost"
-					size="icon"
-					class={cn('size-7 rounded-full', dashiStore.mode === 'view' && 'bg-background shadow-sm')}
-					title="View mode"
-					onclick={() => (dashiStore.mode = 'view')}
-				>
-					<EyeIcon size={14} weight={dashiStore.mode === 'view' ? 'fill' : 'regular'} />
-				</Button>
-				<Button
-					variant="ghost"
-					size="icon"
-					class={cn('size-7 rounded-full', dashiStore.mode === 'edit' && 'bg-background shadow-sm')}
-					title="Edit mode"
-					onclick={() => (dashiStore.mode = 'edit')}
-				>
-					<PencilSimpleIcon size={14} weight={dashiStore.mode === 'edit' ? 'fill' : 'regular'} />
-				</Button>
-			</div>
+		{#if editable}
+			<Button variant="ghost" size="sm" class="h-7 gap-1 px-2 text-xs" onclick={onAddWidget}>
+				<PlusIcon size={14} />
+				Add widget
+			</Button>
 		{/if}
+
+		<Separator orientation="vertical" class="mx-1 h-5!" />
+		<span class="text-muted-foreground max-w-40 truncate px-1 text-xs">
+			{workspaceStore.settings.name}
+		</span>
+
+		<div class="bg-muted flex items-center rounded-full p-0.5">
+			<Button
+				variant="ghost"
+				size="icon"
+				class={cn('size-7 rounded-full', !mobilePreview && 'bg-background shadow-sm')}
+				title="Desktop layout"
+				onclick={() => (mobilePreview = false)}
+			>
+				<DesktopIcon size={14} />
+			</Button>
+			<Button
+				variant="ghost"
+				size="icon"
+				class={cn('size-7 rounded-full', mobilePreview && 'bg-background shadow-sm')}
+				title="Mobile layout"
+				onclick={() => (mobilePreview = true)}
+			>
+				<DeviceMobileIcon size={14} />
+			</Button>
+		</div>
+
+		<div class="bg-muted flex items-center rounded-full p-0.5">
+			<Button
+				variant="ghost"
+				size="icon"
+				class={cn('size-7 rounded-full', !editable && 'bg-background shadow-sm')}
+				title="View mode"
+				onclick={() => (editable = false)}
+			>
+				<EyeIcon size={14} weight={!editable ? 'fill' : 'regular'} />
+			</Button>
+			<Button
+				variant="ghost"
+				size="icon"
+				class={cn('size-7 rounded-full', editable && 'bg-background shadow-sm')}
+				title="Edit mode"
+				onclick={() => (editable = true)}
+			>
+				<PencilSimpleIcon size={14} weight={editable ? 'fill' : 'regular'} />
+			</Button>
+		</div>
 	</div>
 </div>

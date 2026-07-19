@@ -1,5 +1,5 @@
 export type FileConnectionKind = 'csv' | 'excel' | 'parquet';
-export type ServerConnectionKind = 'postgres' | 'sqlite';
+export type ServerConnectionKind = 'postgres' | 'mysql' | 'sqlite';
 export type ConnectionKind = FileConnectionKind | ServerConnectionKind;
 
 export interface FileConnectionBase {
@@ -35,6 +35,18 @@ export interface PostgresConnection {
 	password: string;
 }
 
+export interface MySqlConnection {
+	id: string;
+	name: string;
+	createdAt: number;
+	kind: 'mysql';
+	host: string;
+	port: number;
+	database: string;
+	user: string;
+	password: string;
+}
+
 export interface SqliteConnection {
 	id: string;
 	name: string;
@@ -44,7 +56,12 @@ export interface SqliteConnection {
 }
 
 export type DataConnection =
-	CsvConnection | ExcelConnection | ParquetConnection | PostgresConnection | SqliteConnection;
+	| CsvConnection
+	| ExcelConnection
+	| ParquetConnection
+	| PostgresConnection
+	| MySqlConnection
+	| SqliteConnection;
 
 export function isFileConnection(
 	connection: DataConnection
@@ -54,6 +71,8 @@ export function isFileConnection(
 
 export function isServerConnection(
 	connection: DataConnection
-): connection is PostgresConnection | SqliteConnection {
-	return connection.kind === 'postgres' || connection.kind === 'sqlite';
+): connection is PostgresConnection | MySqlConnection | SqliteConnection {
+	return (
+		connection.kind === 'postgres' || connection.kind === 'mysql' || connection.kind === 'sqlite'
+	);
 }

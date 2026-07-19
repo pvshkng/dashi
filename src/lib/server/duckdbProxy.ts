@@ -1,5 +1,5 @@
 import { DuckDBInstance } from '@duckdb/node-api';
-import type { PostgresConnection, SqliteConnection } from '$lib/connections/types';
+import type { MySqlConnection, PostgresConnection, SqliteConnection } from '$lib/connections/types';
 
 interface QueryResult {
 	columns: string[];
@@ -35,6 +35,14 @@ export async function queryPostgres(
 			`attach '${dsn}' as pg (type postgres, read_only)`,
 			'use pg'
 		],
+		sql
+	);
+}
+
+export async function queryMysql(connection: MySqlConnection, sql: string): Promise<QueryResult> {
+	const dsn = `host=${connection.host} port=${connection.port} db=${connection.database} user=${connection.user} passwd=${connection.password}`;
+	return runOnAttachedDatabase(
+		['install mysql', 'load mysql', `attach '${dsn}' as my (type mysql, read_only)`, 'use my'],
 		sql
 	);
 }

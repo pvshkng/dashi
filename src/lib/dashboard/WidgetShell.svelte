@@ -4,7 +4,7 @@
 	import TrashIcon from 'phosphor-svelte/lib/Trash';
 	import ArrowsOutIcon from 'phosphor-svelte/lib/ArrowsOut';
 	import SlidersIcon from 'phosphor-svelte/lib/Sliders';
-	import DatabaseIcon from 'phosphor-svelte/lib/Database';
+	import FlowArrowIcon from 'phosphor-svelte/lib/FlowArrow';
 
 	let {
 		widget,
@@ -17,7 +17,7 @@
 		onResizeStart,
 		onRemove,
 		onOpenConfig,
-		onOpenData
+		onOpenWorkflow
 	}: {
 		widget: Widget;
 		children: import('svelte').Snippet;
@@ -29,7 +29,7 @@
 		onResizeStart: (event: PointerEvent) => void;
 		onRemove: () => void;
 		onOpenConfig: () => void;
-		onOpenData: () => void;
+		onOpenWorkflow?: () => void;
 	} = $props();
 
 	const fontFamilies: Record<NonNullable<WidgetStyle['fontFamily']>, string> = {
@@ -89,15 +89,15 @@
 				aria-label="Widget actions"
 				onpointerdown={(event) => event.stopPropagation()}
 			>
-				{#if widget.kind !== 'text'}
+				{#if widget.kind === 'viz' && onOpenWorkflow}
 					<button
 						type="button"
 						class="text-muted-foreground hover:text-foreground p-0.5"
-						title="Data source"
-						aria-label="Widget data source"
-						onclick={onOpenData}
+						title="Open workflow"
+						aria-label="Open the workflow behind this widget"
+						onclick={onOpenWorkflow}
 					>
-						<DatabaseIcon size={14} />
+						<FlowArrowIcon size={14} />
 					</button>
 				{/if}
 				<button

@@ -1,43 +1,55 @@
 <script lang="ts">
-	import { dashiStore } from '$lib/dashi/store.svelte';
-	import { connectionsStore } from '$lib/connections/store.svelte';
-	import Dashboard from '$lib/dashboard/Dashboard.svelte';
-	import MenuBar from '$lib/components/dock/MenuBar.svelte';
-	import FloatingWindow from '$lib/windows/FloatingWindow.svelte';
-	import SqlPanel from '$lib/panels/SqlPanel.svelte';
-	import ConnectionsPanel from '$lib/panels/ConnectionsPanel.svelte';
-	import SettingsPanel from '$lib/panels/SettingsPanel.svelte';
+	import { workspaceStore } from '$lib/workspace/store.svelte';
+	import { loadExampleWorkspace } from '$lib/workspace/example';
 	import { Button } from '$lib/components/ui/button';
-	import { onMount } from 'svelte';
-	import FolderOpenIcon from 'phosphor-svelte/lib/FolderOpen';
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import DatabaseIcon from 'phosphor-svelte/lib/Database';
+	import FlowArrowIcon from 'phosphor-svelte/lib/FlowArrow';
+	import SquaresFourIcon from 'phosphor-svelte/lib/SquaresFour';
 	import SparkleIcon from 'phosphor-svelte/lib/Sparkle';
-	import TerminalIcon from 'phosphor-svelte/lib/Terminal';
-	import PlugsIcon from 'phosphor-svelte/lib/Plugs';
-	import GearSixIcon from 'phosphor-svelte/lib/GearSix';
+	import FolderOpenIcon from 'phosphor-svelte/lib/FolderOpen';
 
 	let fileInput: HTMLInputElement | undefined = $state();
-	let dragOver = $state(false);
+	let error = $state<string | null>(null);
 
-	onMount(() => {
-		if (!connectionsStore.loaded) {
-			connectionsStore.load().then(() => connectionsStore.reregisterFileConnections());
+	const areas = [
+		{
+			route: '/data',
+			icon: DatabaseIcon,
+			title: 'Database client',
+			text: 'Browse schemas and write SQL against files, Postgres, MySQL or SQLite.'
+		},
+		{
+			route: '/workflows',
+			icon: FlowArrowIcon,
+			title: 'Workflows',
+			text: 'Build reusable data pipelines with drag and drop nodes.'
+		},
+		{
+			route: '/dashboard',
+			icon: SquaresFourIcon,
+			title: 'Dashboard',
+			text: 'Arrange workflow outputs as widgets on a free grid.'
 		}
-		if (!dashiStore.loaded) {
-			dashiStore.init();
-		}
-	});
+	] as const;
 
-	function onFileChosen(event: Event) {
+	async function onFileChosen(event: Event) {
 		const file = (event.target as HTMLInputElement).files?.[0];
-		if (file) dashiStore.openFile(file);
+		if (!file) return;
+		error = null;
+		try {
+			await workspaceStore.importFile(file);
+			goto(resolve('/dashboard'));
+		} catch (err) {
+			error = err instanceof Error ? err.message : 'Failed to import file.';
+		}
 		if (fileInput) fileInput.value = '';
 	}
 
-	function onDrop(event: DragEvent) {
-		event.preventDefault();
-		dragOver = false;
-		const file = event.dataTransfer?.files?.[0];
-		if (file && file.name.endsWith('.dashi')) dashiStore.openFile(file);
+	async function openExample() {
+		await loadExampleWorkspace();
+		goto(resolve('/dashboard'));
 	}
 </script>
 
@@ -51,82 +63,39 @@
 	onchange={onFileChosen}
 />
 
-<div
-	class="relative min-h-screen"
-	style={dashiStore.doc?.background.color
-		? `background-color: ${dashiStore.doc.background.color}`
-		: ''}
-	role="application"
-	ondragover={(event) => {
-		event.preventDefault();
-		dragOver = true;
-	}}
-	ondragleave={() => (dragOver = false)}
-	ondrop={onDrop}
->
-	{#if dashiStore.doc}
-		<main class="p-4 pb-24">
-			<Dashboard
-				colorScheme={dashiStore.doc.colorScheme}
-				background={dashiStore.doc.background}
-				widgets={dashiStore.doc.widgets}
-				connections={connectionsStore.connections}
-				editable={dashiStore.mode === 'edit'}
-				onUpdateWidget={(widget) => dashiStore.updateWidget(widget)}
-				onRemoveWidget={(widgetId) => dashiStore.removeWidget(widgetId)}
-			/>
-			{#if dashiStore.doc.widgets.length === 0}
-				<div class="text-muted-foreground absolute inset-0 flex items-center justify-center">
-					<p class="text-sm">
-						{dashiStore.mode === 'edit'
-							? 'Empty dashboard — use the Add menu below to add widgets.'
-							: 'Empty dashboard — switch to edit mode to add widgets.'}
-					</p>
-				</div>
-			{/if}
-		</main>
-	{:else if dashiStore.loaded}
-		<main class="flex min-h-screen flex-col items-center justify-center gap-6 p-6 pb-24">
-			<div class="flex flex-col items-center gap-2 text-center">
-				<h1 class="text-4xl font-semibold tracking-tight">Dashi</h1>
-				<p class="text-muted-foreground max-w-md text-sm">
-					Client-side BI powered by DuckDB in your browser. Open a
-					<span class="text-foreground font-medium">.dashi</span> dashboard file to get started, or explore
-					the example.
-				</p>
-			</div>
-			<div class="flex flex-wrap items-center justify-center gap-2">
-				<Button onclick={() => fileInput?.click()}>
-					<FolderOpenIcon size={16} />
-					Open .dashi file
-				</Button>
-				<Button variant="outline" onclick={() => dashiStore.openExample()}>
-					<SparkleIcon size={16} />
-					Open example dashboard
-				</Button>
-			</div>
-			{#if dashiStore.error}
-				<p class="text-destructive text-sm">{dashiStore.error}</p>
-			{/if}
-			<p class="text-muted-foreground text-xs">…or drop a .dashi file anywhere</p>
-		</main>
+<main class="mx-auto flex min-h-[calc(100vh-2.75rem)] max-w-3xl flex-col justify-center gap-8 p-6">
+	<div class="flex flex-col gap-2">
+		<h1 class="text-4xl font-semibold tracking-tight">Dashi</h1>
+		<p class="text-muted-foreground max-w-lg text-sm">
+			Open BI in your browser. Connect data, shape it with visual workflows, and pin the results to
+			a dashboard. Powered by DuckDB.
+		</p>
+	</div>
+
+	<div class="grid gap-3 sm:grid-cols-3">
+		{#each areas as area (area.route)}
+			<a
+				href={resolve(area.route)}
+				class="hover:border-primary/50 hover:bg-accent/40 flex flex-col gap-2 rounded-xl border p-4 transition-colors"
+			>
+				<area.icon size={22} class="text-primary" />
+				<p class="text-sm font-medium">{area.title}</p>
+				<p class="text-muted-foreground text-xs">{area.text}</p>
+			</a>
+		{/each}
+	</div>
+
+	<div class="flex flex-wrap items-center gap-2">
+		<Button onclick={openExample}>
+			<SparkleIcon size={16} />
+			Load example workspace
+		</Button>
+		<Button variant="outline" onclick={() => fileInput?.click()}>
+			<FolderOpenIcon size={16} />
+			Import .dashi file
+		</Button>
+	</div>
+	{#if error}
+		<p class="text-destructive text-sm">{error}</p>
 	{/if}
-
-	{#if dragOver}
-		<div
-			class="border-primary bg-primary/5 pointer-events-none fixed inset-3 z-30 rounded-2xl border-2 border-dashed"
-		></div>
-	{/if}
-</div>
-
-<FloatingWindow id="sql" title="SQL editor" icon={TerminalIcon}>
-	<SqlPanel />
-</FloatingWindow>
-<FloatingWindow id="connections" title="Connections" icon={PlugsIcon}>
-	<ConnectionsPanel />
-</FloatingWindow>
-<FloatingWindow id="settings" title="Settings" icon={GearSixIcon}>
-	<SettingsPanel />
-</FloatingWindow>
-
-<MenuBar />
+</main>

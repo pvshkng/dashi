@@ -1,14 +1,14 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import type { PostgresConnection, SqliteConnection } from '$lib/connections/types';
+import type { MySqlConnection, PostgresConnection, SqliteConnection } from '$lib/connections/types';
 import {
 	deleteServerConnection,
 	listServerConnections,
 	saveServerConnection
 } from '$lib/server/connectionsStore';
 
-function toPublic(connection: PostgresConnection | SqliteConnection) {
-	if (connection.kind === 'postgres') {
+function toPublic(connection: PostgresConnection | MySqlConnection | SqliteConnection) {
+	if (connection.kind === 'postgres' || connection.kind === 'mysql') {
 		return {
 			id: connection.id,
 			name: connection.name,
@@ -29,7 +29,8 @@ export const GET: RequestHandler = async () => {
 };
 
 export const POST: RequestHandler = async ({ request }) => {
-	const connection = (await request.json()) as PostgresConnection | SqliteConnection;
+	const connection = (await request.json()) as
+		PostgresConnection | MySqlConnection | SqliteConnection;
 	await saveServerConnection(connection);
 	return json(toPublic(connection));
 };

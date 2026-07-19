@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { getServerConnection } from '$lib/server/connectionsStore';
-import { queryPostgres, querySqlite } from '$lib/server/duckdbProxy';
+import { queryMysql, queryPostgres, querySqlite } from '$lib/server/duckdbProxy';
 
 export const POST: RequestHandler = async ({ request }) => {
 	const body = (await request.json()) as { connectionId: string; sql: string };
@@ -15,7 +15,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		const result =
 			connection.kind === 'postgres'
 				? await queryPostgres(connection, body.sql)
-				: await querySqlite(connection, body.sql);
+				: connection.kind === 'mysql'
+					? await queryMysql(connection, body.sql)
+					: await querySqlite(connection, body.sql);
 		return json(result);
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'query failed';

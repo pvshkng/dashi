@@ -3,13 +3,44 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { ModeWatcher } from 'mode-watcher';
 	import * as Tooltip from '$lib/components/ui/tooltip';
+	import { Toaster } from '$lib/components/ui/sonner';
+	import AppNav from '$lib/components/shell/AppNav.svelte';
+	import FloatingWindow from '$lib/windows/FloatingWindow.svelte';
+	import ConnectionsPanel from '$lib/panels/ConnectionsPanel.svelte';
+	import SettingsPanel from '$lib/panels/SettingsPanel.svelte';
+	import { connectionsStore } from '$lib/connections/store.svelte';
+	import { workspaceStore } from '$lib/workspace/store.svelte';
+	import { reseedExampleIfPresent } from '$lib/workspace/example';
+	import { onMount } from 'svelte';
+	import PlugsIcon from 'phosphor-svelte/lib/Plugs';
+	import GearSixIcon from 'phosphor-svelte/lib/GearSix';
 
 	let { children } = $props();
+
+	onMount(async () => {
+		if (!connectionsStore.loaded) {
+			await connectionsStore.load();
+			await connectionsStore.reregisterFileConnections();
+		}
+		await workspaceStore.init();
+		await reseedExampleIfPresent();
+	});
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 <ModeWatcher defaultMode="light" track={false} />
 
 <Tooltip.Provider>
-	{@render children()}
+	<Toaster />
+	<AppNav />
+	<div class="pt-11">
+		{@render children()}
+	</div>
+
+	<FloatingWindow id="connections" title="Connections" icon={PlugsIcon}>
+		<ConnectionsPanel />
+	</FloatingWindow>
+	<FloatingWindow id="settings" title="Dashboard settings" icon={GearSixIcon}>
+		<SettingsPanel />
+	</FloatingWindow>
 </Tooltip.Provider>
