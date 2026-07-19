@@ -11,17 +11,21 @@ const KEYS = {
 
 type SyncKey = keyof typeof KEYS;
 
+export type DashboardLayoutMode = 'grid' | 'free';
+
 export interface DashboardSettings {
 	name: string;
 	colorScheme: string;
 	showGrid: boolean;
+	layoutMode: DashboardLayoutMode;
 	backgroundColor?: string;
 }
 
 const defaultSettings: DashboardSettings = {
 	name: 'My dashboard',
 	colorScheme: 'blue',
-	showGrid: false
+	showGrid: true,
+	layoutMode: 'grid'
 };
 
 export interface WorkspaceExport {

@@ -44,9 +44,18 @@ function literal(value: string): string {
 	return `'${value.replaceAll("'", "''")}'`;
 }
 
+function hashId(value: string): string {
+	let hash = 5381;
+	for (let i = 0; i < value.length; i++) {
+		hash = ((hash << 5) + hash + value.charCodeAt(i)) >>> 0;
+	}
+	return hash.toString(16).padStart(8, '0');
+}
+
+/** Unique per workflow+node; a truncated prefix collided across workflows sharing ids. */
 function viewName(workflowId: string, nodeId: string): string {
 	const clean = (s: string) => s.replaceAll(/[^a-zA-Z0-9]/g, '_');
-	return `wf_${clean(workflowId).slice(0, 8)}_${clean(nodeId).slice(0, 12)}`;
+	return `wf_${hashId(workflowId)}_${hashId(nodeId)}_${clean(nodeId).slice(0, 12)}`;
 }
 
 export function topologicalOrder(workflow: Workflow): string[] {

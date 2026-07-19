@@ -5,6 +5,15 @@ export interface WidgetLayout {
 	h: number;
 }
 
+/** Pixel-based rectangle used by the freeform (non-grid) layout mode. */
+export interface FreeRect {
+	x: number;
+	y: number;
+	w: number;
+	h: number;
+	z?: number;
+}
+
 export interface TextWidgetConfig {
 	content: string;
 }
@@ -15,13 +24,24 @@ export interface VizWidgetConfig {
 	nodeId: string;
 }
 
-export type WidgetKind = 'text' | 'viz';
+export type ShapeKind = 'rectangle' | 'ellipse' | 'triangle' | 'line' | 'arrow';
+
+export interface ShapeWidgetConfig {
+	shape: ShapeKind;
+	fill: string;
+	stroke: string;
+	strokeWidth: number;
+}
+
+export type WidgetKind = 'text' | 'viz' | 'shape';
 
 /**
  * Visual customization for a widget, edited via the settings window.
  * Every field is optional; unset fields fall back to the app defaults.
  */
 export interface WidgetStyle {
+	/** Hide the title bar for presentation-style elements (text, shapes). */
+	showHeader?: boolean;
 	fontFamily?: 'sans' | 'serif' | 'mono';
 	fontSize?: number;
 	textAlign?: 'left' | 'center' | 'right';
@@ -39,6 +59,8 @@ interface WidgetBase {
 	id: string;
 	title: string;
 	layout: WidgetLayout;
+	/** Position in freeform mode; initialized from the grid layout on first use. */
+	free?: FreeRect;
 	style?: WidgetStyle;
 }
 
@@ -52,4 +74,9 @@ export interface VizWidget extends WidgetBase {
 	config: VizWidgetConfig;
 }
 
-export type Widget = TextWidget | VizWidget;
+export interface ShapeWidget extends WidgetBase {
+	kind: 'shape';
+	config: ShapeWidgetConfig;
+}
+
+export type Widget = TextWidget | VizWidget | ShapeWidget;

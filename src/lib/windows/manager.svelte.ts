@@ -80,8 +80,13 @@ class WindowManager {
 	}
 
 	dock(id: string, side: DockSide): void {
-		this.windows[id].docked = side;
-		this.windows[id].maximized = false;
+		const win = this.windows[id];
+		win.docked = side;
+		win.maximized = false;
+		if (side && typeof window !== 'undefined') {
+			// Left + right docks tile the screen as an even split.
+			win.dockWidth = Math.max(320, Math.floor(window.innerWidth / 2));
+		}
 		this.bringToFront(id);
 	}
 

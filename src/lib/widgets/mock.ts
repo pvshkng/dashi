@@ -1,5 +1,5 @@
 import type { CsvConnection } from '$lib/connections/types';
-import { getDuckDB } from '$lib/duckdb/client';
+import { getConnection } from '$lib/duckdb/client';
 
 export const mockConnectionId = 'mock-sales';
 
@@ -41,17 +41,12 @@ export const mockCsvConnection: CsvConnection = {
 };
 
 export async function seedMockData(): Promise<void> {
-	const db = await getDuckDB();
-	const conn = await db.connect();
-	try {
-		const values = mockRows
-			.map((row) => `('${row.month}', '${row.region}', ${row.revenue}, ${row.units})`)
-			.join(', ');
-		await conn.query(
-			`create or replace table mock_sales (month varchar, region varchar, revenue integer, units integer)`
-		);
-		await conn.query(`insert into mock_sales values ${values}`);
-	} finally {
-		await conn.close();
-	}
+	const conn = await getConnection();
+	const values = mockRows
+		.map((row) => `('${row.month}', '${row.region}', ${row.revenue}, ${row.units})`)
+		.join(', ');
+	await conn.query(
+		`create or replace table mock_sales (month varchar, region varchar, revenue integer, units integer)`
+	);
+	await conn.query(`insert into mock_sales values ${values}`);
 }

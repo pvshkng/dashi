@@ -138,7 +138,7 @@
 	</button>
 {/snippet}
 
-<div class="desktop relative h-[calc(100vh-2.75rem)] overflow-hidden">
+<div class="desktop relative h-screen overflow-hidden">
 	<div class="pointer-events-none absolute inset-0 select-none">
 		<p
 			class="text-foreground/5 absolute right-6 bottom-14 text-[7rem] leading-none font-bold tracking-tighter"
@@ -202,27 +202,17 @@
 		</div>
 	</div>
 
-	<FloatingWindow id="data" title="Data Studio" icon={DatabaseIcon} expandHref={resolve('/data')}>
+	<FloatingWindow id="data" title="Data Studio" icon={DatabaseIcon}>
 		<div class="h-full">
 			<DataApp />
 		</div>
 	</FloatingWindow>
 
-	<FloatingWindow
-		id="workflows"
-		title="Workflows"
-		icon={FlowArrowIcon}
-		expandHref={resolve('/workflows')}
-	>
+	<FloatingWindow id="workflows" title="Workflows" icon={FlowArrowIcon}>
 		<WorkflowsApp />
 	</FloatingWindow>
 
-	<FloatingWindow
-		id="dashboards"
-		title="Dashboards"
-		icon={SquaresFourIcon}
-		expandHref={resolve('/dashboard')}
-	>
+	<FloatingWindow id="dashboards" title="Dashboards" icon={SquaresFourIcon}>
 		<DashboardsApp />
 	</FloatingWindow>
 

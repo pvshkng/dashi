@@ -7,6 +7,7 @@
 	import { dashboardPresets, loadDashboardPreset } from '$lib/workspace/prebuilt';
 	import type { DashboardPreset } from '$lib/workspace/prebuilt';
 	import { windowManager } from '$lib/windows/manager.svelte';
+	import { resolve } from '$app/paths';
 	import { cn } from '$lib/utils';
 	import { toast } from 'svelte-sonner';
 	import EyeIcon from 'phosphor-svelte/lib/Eye';
@@ -14,15 +15,19 @@
 	import PlusIcon from 'phosphor-svelte/lib/Plus';
 	import DesktopIcon from 'phosphor-svelte/lib/Desktop';
 	import DeviceMobileIcon from 'phosphor-svelte/lib/DeviceMobile';
+	import HouseIcon from 'phosphor-svelte/lib/House';
+	import ProjectorScreenChartIcon from 'phosphor-svelte/lib/ProjectorScreenChart';
 
 	let {
 		editable = $bindable(false),
 		mobilePreview = $bindable(false),
-		onAddWidget
+		onAddWidget,
+		onPresent
 	}: {
 		editable?: boolean;
 		mobilePreview?: boolean;
 		onAddWidget: () => void;
+		onPresent?: () => void;
 	} = $props();
 
 	let fileInput: HTMLInputElement | undefined = $state();
@@ -62,6 +67,9 @@
 		class="bg-background/60 pointer-events-auto flex items-center gap-1 rounded-2xl border px-2 py-1 shadow-xl ring-1 ring-black/5 backdrop-blur-2xl"
 		style="padding-bottom: max(0.25rem, env(safe-area-inset-bottom) / 2)"
 	>
+		<Button variant="ghost" size="icon" class="size-7" title="Back to desktop" href={resolve('/')}>
+			<HouseIcon size={15} />
+		</Button>
 		<Menubar.Root class="border-none bg-transparent shadow-none">
 			<Menubar.Menu>
 				<Menubar.Trigger>File</Menubar.Trigger>
@@ -84,6 +92,35 @@
 							</div>
 						</Menubar.Item>
 					{/each}
+				</Menubar.Content>
+			</Menubar.Menu>
+			<Menubar.Menu>
+				<Menubar.Trigger>View</Menubar.Trigger>
+				<Menubar.Content side="top" align="start">
+					<Menubar.RadioGroup
+						value={workspaceStore.settings.layoutMode}
+						onValueChange={(value) =>
+							workspaceStore.updateSettings({ layoutMode: value as 'grid' | 'free' })}
+					>
+						<Menubar.GroupHeading>Layout</Menubar.GroupHeading>
+						<Menubar.RadioItem value="grid">Snap to grid</Menubar.RadioItem>
+						<Menubar.RadioItem value="free">Freeform</Menubar.RadioItem>
+					</Menubar.RadioGroup>
+					<Menubar.Separator />
+					<Menubar.CheckboxItem
+						checked={workspaceStore.settings.showGrid}
+						onclick={() =>
+							workspaceStore.updateSettings({ showGrid: !workspaceStore.settings.showGrid })}
+					>
+						Show grid lines while editing
+					</Menubar.CheckboxItem>
+					{#if onPresent}
+						<Menubar.Separator />
+						<Menubar.Item onclick={onPresent}>
+							<ProjectorScreenChartIcon size={14} />
+							Present
+						</Menubar.Item>
+					{/if}
 				</Menubar.Content>
 			</Menubar.Menu>
 			<Menubar.Menu>
@@ -137,6 +174,18 @@
 				<DeviceMobileIcon size={14} />
 			</Button>
 		</div>
+
+		{#if onPresent}
+			<Button
+				variant="ghost"
+				size="icon"
+				class="size-7"
+				title="Present fullscreen"
+				onclick={onPresent}
+			>
+				<ProjectorScreenChartIcon size={15} />
+			</Button>
+		{/if}
 
 		<div class="bg-muted flex items-center rounded-full p-0.5">
 			<Button

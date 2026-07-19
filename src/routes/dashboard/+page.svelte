@@ -1,23 +1,52 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { workspaceStore } from '$lib/workspace/store.svelte';
 	import Dashboard from '$lib/dashboard/Dashboard.svelte';
 	import AddWidgetDialog from '$lib/dashboard/AddWidgetDialog.svelte';
 	import MenuBar from '$lib/components/dock/MenuBar.svelte';
 	import { innerWidth } from 'svelte/reactivity/window';
+	import XIcon from 'phosphor-svelte/lib/X';
 
 	let editable = $state(false);
 	let mobilePreview = $state(false);
 	let addOpen = $state(false);
+	let presenting = $state(false);
+	let presentEl = $state<HTMLDivElement>();
 
 	// Small viewports always get the responsive stacked layout.
 	let isNarrow = $derived((innerWidth.current ?? 1200) < 768);
 	let mobile = $derived(mobilePreview || isNarrow);
+
+	async function startPresenting() {
+		presenting = true;
+		await tick();
+		try {
+			await presentEl?.requestFullscreen();
+		} catch {
+			// Fullscreen can be denied; the overlay still covers the viewport.
+		}
+	}
+
+	function stopPresenting() {
+		presenting = false;
+		if (document.fullscreenElement) void document.exitFullscreen();
+	}
+
+	function onFullscreenChange() {
+		if (!document.fullscreenElement && presenting) presenting = false;
+	}
+
+	function onKeydown(event: KeyboardEvent) {
+		if (event.key === 'Escape' && presenting) stopPresenting();
+	}
 </script>
 
 <svelte:head><title>Dashboard — Dashi</title></svelte:head>
+<svelte:document onfullscreenchange={onFullscreenChange} />
+<svelte:window onkeydown={onKeydown} />
 
 <div
-	class="min-h-[calc(100vh-2.75rem)]"
+	class="min-h-[100vh]"
 	style={workspaceStore.settings.backgroundColor
 		? `background-color: ${workspaceStore.settings.backgroundColor}`
 		: ''}
@@ -26,6 +55,7 @@
 		<Dashboard
 			colorScheme={workspaceStore.settings.colorScheme}
 			showGrid={workspaceStore.settings.showGrid}
+			layoutMode={workspaceStore.settings.layoutMode}
 			widgets={workspaceStore.widgets}
 			editable={editable && !mobile}
 			{mobile}
@@ -44,5 +74,42 @@
 	</main>
 </div>
 
-<AddWidgetDialog bind:open={addOpen} />
-<MenuBar bind:editable bind:mobilePreview onAddWidget={() => (addOpen = true)} />
+{#if presenting}
+	<div
+		bind:this={presentEl}
+		class="bg-background fixed inset-0 z-80 overflow-auto"
+		style={workspaceStore.settings.backgroundColor
+			? `background-color: ${workspaceStore.settings.backgroundColor}`
+			: ''}
+	>
+		<main class="p-8">
+			<Dashboard
+				colorScheme={workspaceStore.settings.colorScheme}
+				showGrid={false}
+				layoutMode={workspaceStore.settings.layoutMode}
+				widgets={workspaceStore.widgets}
+				editable={false}
+				mobile={false}
+				onUpdateWidget={(widget) => workspaceStore.updateWidget(widget)}
+				onRemoveWidget={(widgetId) => workspaceStore.removeWidget(widgetId)}
+			/>
+		</main>
+		<button
+			type="button"
+			class="bg-background/60 text-muted-foreground hover:text-foreground fixed top-4 right-4 rounded-full border p-2 opacity-30 shadow-sm backdrop-blur-md transition-opacity hover:opacity-100"
+			title="Exit presentation (Esc)"
+			aria-label="Exit presentation"
+			onclick={stopPresenting}
+		>
+			<XIcon size={16} />
+		</button>
+	</div>
+{:else}
+	<AddWidgetDialog bind:open={addOpen} />
+	<MenuBar
+		bind:editable
+		bind:mobilePreview
+		onAddWidget={() => (addOpen = true)}
+		onPresent={startPresenting}
+	/>
+{/if}

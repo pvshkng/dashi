@@ -23,7 +23,7 @@
 <svelte:head><title>{workflow?.name ?? 'Workflow'} — Dashi</title></svelte:head>
 
 {#if workflow}
-	<div class="flex h-[calc(100vh-2.75rem)] flex-col">
+	<div class="flex h-[100vh] flex-col">
 		<div class="flex shrink-0 items-center gap-2 border-b px-3 py-1.5">
 			<Button variant="ghost" size="icon" class="size-7" href="/workflows" title="All workflows">
 				<ArrowLeftIcon size={15} />
@@ -63,7 +63,7 @@
 	</div>
 {:else if workspaceStore.loaded}
 	<main
-		class="text-muted-foreground flex h-[calc(100vh-2.75rem)] flex-col items-center justify-center gap-3 text-sm"
+		class="text-muted-foreground flex h-[100vh] flex-col items-center justify-center gap-3 text-sm"
 	>
 		<p>Workflow not found.</p>
 		<Button variant="outline" href="/workflows">Back to workflows</Button>

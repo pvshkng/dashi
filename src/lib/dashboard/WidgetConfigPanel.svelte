@@ -1,10 +1,11 @@
 <script lang="ts">
-	import type { Widget, WidgetStyle } from '$lib/widgets/types';
+	import type { ShapeKind, Widget, WidgetStyle } from '$lib/widgets/types';
 	import * as Select from '$lib/components/ui/select';
 	import { Label } from '$lib/components/ui/label';
 	import { Input } from '$lib/components/ui/input';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Slider } from '$lib/components/ui/slider';
+	import { Switch } from '$lib/components/ui/switch';
 	import { Button } from '$lib/components/ui/button';
 	import { Separator } from '$lib/components/ui/separator';
 	import { cn } from '$lib/utils';
@@ -28,6 +29,14 @@
 
 	const fontLabels = { sans: 'Sans', serif: 'Serif', mono: 'Mono' } as const;
 	const shadowLabels = { none: 'None', sm: 'Small', md: 'Medium', lg: 'Large' } as const;
+	const shapeLabels: Record<ShapeKind, string> = {
+		rectangle: 'Rectangle',
+		ellipse: 'Ellipse',
+		triangle: 'Triangle',
+		line: 'Line',
+		arrow: 'Arrow'
+	};
+	let showHeader = $derived(style?.showHeader ?? widget.kind !== 'shape');
 	const aligns = [
 		{ value: 'left', icon: TextAlignLeftIcon },
 		{ value: 'center', icon: TextAlignCenterIcon },
@@ -44,6 +53,10 @@
 			oninput={(event) => onChange({ ...widget, title: (event.target as HTMLInputElement).value })}
 		/>
 	</div>
+	<div class="flex items-center justify-between">
+		<Label class="text-xs">Show title bar</Label>
+		<Switch checked={showHeader} onCheckedChange={(value) => set('showHeader', value)} />
+	</div>
 	{#if widget.kind === 'text'}
 		<div class="space-y-1">
 			<Label class="text-xs">Content</Label>
@@ -56,6 +69,66 @@
 						...widget,
 						config: { ...widget.config, content: (event.target as HTMLTextAreaElement).value }
 					})}
+			/>
+		</div>
+	{/if}
+	{#if widget.kind === 'shape'}
+		<div class="space-y-1">
+			<Label class="text-xs">Shape</Label>
+			<Select.Root
+				type="single"
+				value={widget.config.shape}
+				onValueChange={(value) =>
+					onChange({ ...widget, config: { ...widget.config, shape: value as ShapeKind } })}
+			>
+				<Select.Trigger class="h-8 w-full text-xs">
+					{shapeLabels[widget.config.shape]}
+				</Select.Trigger>
+				<Select.Content>
+					{#each Object.entries(shapeLabels) as [value, label] (value)}
+						<Select.Item {value} {label} />
+					{/each}
+				</Select.Content>
+			</Select.Root>
+		</div>
+		<div class="grid grid-cols-2 gap-2">
+			<div class="space-y-1">
+				<Label class="text-xs">Fill</Label>
+				<input
+					type="color"
+					class="h-8 w-full cursor-pointer rounded-md border"
+					value={widget.config.fill}
+					oninput={(event) =>
+						onChange({
+							...widget,
+							config: { ...widget.config, fill: (event.target as HTMLInputElement).value }
+						})}
+				/>
+			</div>
+			<div class="space-y-1">
+				<Label class="text-xs">Stroke</Label>
+				<input
+					type="color"
+					class="h-8 w-full cursor-pointer rounded-md border"
+					value={widget.config.stroke}
+					oninput={(event) =>
+						onChange({
+							...widget,
+							config: { ...widget.config, stroke: (event.target as HTMLInputElement).value }
+						})}
+				/>
+			</div>
+		</div>
+		<div class="space-y-1">
+			<Label class="text-xs">Stroke width — {widget.config.strokeWidth}px</Label>
+			<Slider
+				type="single"
+				value={widget.config.strokeWidth}
+				min={0}
+				max={12}
+				step={1}
+				onValueChange={(value) =>
+					onChange({ ...widget, config: { ...widget.config, strokeWidth: value } })}
 			/>
 		</div>
 	{/if}

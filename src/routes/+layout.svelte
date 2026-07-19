@@ -4,7 +4,6 @@
 	import { ModeWatcher } from 'mode-watcher';
 	import * as Tooltip from '$lib/components/ui/tooltip';
 	import { Toaster } from '$lib/components/ui/sonner';
-	import AppNav from '$lib/components/shell/AppNav.svelte';
 	import FloatingWindow from '$lib/windows/FloatingWindow.svelte';
 	import ConnectionsPanel from '$lib/panels/ConnectionsPanel.svelte';
 	import SettingsPanel from '$lib/panels/SettingsPanel.svelte';
@@ -34,10 +33,7 @@
 
 <Tooltip.Provider>
 	<Toaster />
-	<AppNav />
-	<div class="pt-11">
-		{@render children()}
-	</div>
+	{@render children()}
 
 	<FloatingWindow id="connections" title="Connections" icon={PlugsIcon}>
 		<ConnectionsPanel />
