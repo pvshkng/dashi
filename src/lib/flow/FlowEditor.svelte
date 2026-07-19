@@ -22,6 +22,9 @@
 	import FlowNode from './FlowNode.svelte';
 	import NodePalette from './NodePalette.svelte';
 	import NodeConfigPanel from './NodeConfigPanel.svelte';
+	import PreviewPanel from './PreviewPanel.svelte';
+	import { Button } from '$lib/components/ui/button';
+	import ChartLineUpIcon from 'phosphor-svelte/lib/ChartLineUp';
 	import { toast } from 'svelte-sonner';
 
 	let { workflow }: { workflow: Workflow } = $props();
@@ -52,6 +55,7 @@
 	let nodes = $state.raw<Node[]>([]);
 	let edges = $state.raw<Edge[]>([]);
 	let selectedNodeId = $state<string | null>(null);
+	let previewOpen = $state(true);
 	let appliedAt = -1;
 
 	// Re-map from the store when the workflow changed elsewhere (other window/tab).
@@ -159,6 +163,13 @@
 		persist(touch);
 	}
 
+	function updateNodeConfig(nodeId: string, config: WorkflowNode['config']) {
+		nodes = nodes.map((node) =>
+			node.id === nodeId ? { ...node, data: { ...node.data, config } } : node
+		);
+		persist();
+	}
+
 	function deleteSelected() {
 		edges = edges.filter(
 			(edge) => edge.source !== selectedNodeId && edge.target !== selectedNodeId
@@ -168,8 +179,8 @@
 		persist();
 	}
 
-	function addToDashboard() {
-		const node = selectedNode;
+	function addToDashboard(target?: WorkflowNode) {
+		const node = target ?? selectedNode;
 		if (!node) return;
 		const bottom = Math.max(0, ...workspaceStore.widgets.map((x) => x.layout.y + x.layout.h));
 		const widget: Widget = {
@@ -218,6 +229,17 @@
 			<Controls />
 			<MiniMap class="hidden! md:block!" />
 		</SvelteFlow>
+		{#if !previewOpen}
+			<Button
+				variant="outline"
+				size="sm"
+				class="absolute top-2 right-2 z-10 h-7 gap-1 text-xs shadow-sm"
+				onclick={() => (previewOpen = true)}
+			>
+				<ChartLineUpIcon size={13} />
+				Preview
+			</Button>
+		{/if}
 	</div>
 	{#if selectedNode}
 		<NodeConfigPanel
@@ -228,6 +250,14 @@
 			onDelete={deleteSelected}
 			onAddToDashboard={addToDashboard}
 			onClose={() => (selectedNodeId = null)}
+		/>
+	{/if}
+	{#if previewOpen}
+		<PreviewPanel
+			{workflow}
+			onConfigChange={updateNodeConfig}
+			onAddToDashboard={(node) => addToDashboard(node)}
+			onClose={() => (previewOpen = false)}
 		/>
 	{/if}
 </div>

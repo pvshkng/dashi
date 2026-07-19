@@ -8,12 +8,14 @@
 	import FloatingWindow from '$lib/windows/FloatingWindow.svelte';
 	import ConnectionsPanel from '$lib/panels/ConnectionsPanel.svelte';
 	import SettingsPanel from '$lib/panels/SettingsPanel.svelte';
+	import SampleDataPanel from '$lib/panels/SampleDataPanel.svelte';
 	import { connectionsStore } from '$lib/connections/store.svelte';
 	import { workspaceStore } from '$lib/workspace/store.svelte';
 	import { reseedExampleIfPresent } from '$lib/workspace/example';
 	import { onMount } from 'svelte';
 	import PlugsIcon from 'phosphor-svelte/lib/Plugs';
 	import GearSixIcon from 'phosphor-svelte/lib/GearSix';
+	import DownloadSimpleIcon from 'phosphor-svelte/lib/DownloadSimple';
 
 	let { children } = $props();
 
@@ -42,5 +44,8 @@
 	</FloatingWindow>
 	<FloatingWindow id="settings" title="Dashboard settings" icon={GearSixIcon}>
 		<SettingsPanel />
+	</FloatingWindow>
+	<FloatingWindow id="datasets" title="Datasets" icon={DownloadSimpleIcon}>
+		<SampleDataPanel />
 	</FloatingWindow>
 </Tooltip.Provider>

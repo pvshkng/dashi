@@ -4,6 +4,7 @@ export interface WindowState {
 	id: string;
 	open: boolean;
 	docked: DockSide;
+	maximized: boolean;
 	x: number;
 	y: number;
 	width: number;
@@ -24,6 +25,7 @@ function initialWindow(id: string, options: WindowOptions = {}): WindowState {
 		id,
 		open: false,
 		docked: null,
+		maximized: false,
 		x: options.x ?? 120,
 		y: options.y ?? 80,
 		width: options.width ?? 560,
@@ -79,7 +81,19 @@ class WindowManager {
 
 	dock(id: string, side: DockSide): void {
 		this.windows[id].docked = side;
+		this.windows[id].maximized = false;
 		this.bringToFront(id);
+	}
+
+	toggleMaximize(id: string): void {
+		const win = this.windows[id];
+		win.docked = null;
+		win.maximized = !win.maximized;
+		this.bringToFront(id);
+	}
+
+	isOpen(id: string): boolean {
+		return this.windows[id]?.open ?? false;
 	}
 }
 

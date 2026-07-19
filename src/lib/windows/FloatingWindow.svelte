@@ -7,6 +7,9 @@
 	import SidebarSimpleIcon from 'phosphor-svelte/lib/SidebarSimple';
 	import BrowsersIcon from 'phosphor-svelte/lib/Browsers';
 	import ArrowsOutSimpleIcon from 'phosphor-svelte/lib/ArrowsOutSimple';
+	import CornersOutIcon from 'phosphor-svelte/lib/CornersOut';
+	import CornersInIcon from 'phosphor-svelte/lib/CornersIn';
+	import ArrowSquareOutIcon from 'phosphor-svelte/lib/ArrowSquareOut';
 
 	const EDGE_SNAP_THRESHOLD = 24;
 	// Windows move freely while dragging and settle onto this grid on release,
@@ -22,12 +25,14 @@
 		title,
 		icon: Icon,
 		dockable = true,
+		expandHref,
 		children
 	}: {
 		id: string;
 		title: string;
 		icon: typeof XIcon;
 		dockable?: boolean;
+		expandHref?: string;
 		children: Snippet;
 	} = $props();
 
@@ -43,7 +48,7 @@
 	}
 
 	function startDrag(event: PointerEvent) {
-		if (win.docked) return;
+		if (win.docked || win.maximized) return;
 		event.preventDefault();
 		windowManager.bringToFront(id);
 		const startX = event.clientX;
@@ -135,20 +140,24 @@
 		tabindex="-1"
 		class={cn(
 			'bg-background/80 fixed flex flex-col overflow-hidden border shadow-xl backdrop-blur-xl',
-			win.docked ? 'inset-y-0 rounded-none border-y-0' : 'rounded-xl'
+			win.docked ? 'inset-y-0 rounded-none border-y-0' : 'rounded-xl',
+			win.maximized && 'inset-x-2 top-13 bottom-2'
 		)}
 		style={win.docked
 			? `${win.docked}: 0; width: ${win.dockWidth}px; z-index: ${40 + win.z};`
-			: `left: ${win.x}px; top: ${win.y}px; width: ${win.width}px; height: ${win.height}px; z-index: ${40 + win.z};`}
+			: win.maximized
+				? `z-index: ${40 + win.z};`
+				: `left: ${win.x}px; top: ${win.y}px; width: ${win.width}px; height: ${win.height}px; z-index: ${40 + win.z};`}
 		onpointerdown={() => windowManager.bringToFront(id)}
 	>
 		<header
 			role="presentation"
 			class={cn(
 				'flex shrink-0 items-center justify-between gap-2 border-b px-3 py-1.5 select-none',
-				!win.docked && 'cursor-grab active:cursor-grabbing'
+				!win.docked && !win.maximized && 'cursor-grab active:cursor-grabbing'
 			)}
 			onpointerdown={startDrag}
+			ondblclick={() => windowManager.toggleMaximize(id)}
 		>
 			<div class="text-muted-foreground flex items-center gap-2 text-sm font-medium">
 				<Icon size={16} />
@@ -196,6 +205,31 @@
 					variant="ghost"
 					size="icon"
 					class="size-6"
+					title={win.maximized ? 'Restore' : 'Maximize'}
+					onclick={() => windowManager.toggleMaximize(id)}
+				>
+					{#if win.maximized}
+						<CornersInIcon size={14} />
+					{:else}
+						<CornersOutIcon size={14} />
+					{/if}
+				</Button>
+				{#if expandHref}
+					<Button
+						variant="ghost"
+						size="icon"
+						class="size-6"
+						title="Open full page"
+						href={expandHref}
+						onclick={() => windowManager.close(id)}
+					>
+						<ArrowSquareOutIcon size={14} />
+					</Button>
+				{/if}
+				<Button
+					variant="ghost"
+					size="icon"
+					class="size-6"
 					title="Close"
 					onclick={() => windowManager.close(id)}
 				>
@@ -206,7 +240,7 @@
 		<div class="flex-1 overflow-auto">
 			{@render children()}
 		</div>
-		{#if !win.docked}
+		{#if !win.docked && !win.maximized}
 			<button
 				type="button"
 				class="text-muted-foreground absolute right-0 bottom-0 cursor-se-resize p-1"
@@ -215,7 +249,7 @@
 			>
 				<ArrowsOutSimpleIcon size={12} />
 			</button>
-		{:else}
+		{:else if win.docked}
 			<button
 				type="button"
 				class={cn(

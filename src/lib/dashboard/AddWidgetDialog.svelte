@@ -3,13 +3,36 @@
 	import { Button } from '$lib/components/ui/button';
 	import { workspaceStore } from '$lib/workspace/store.svelte';
 	import { isVizKind, getNodeDef } from '$lib/workflow/defs';
+	import {
+		workflowTemplates,
+		addTemplateToDashboard,
+		type WorkflowTemplate
+	} from '$lib/workflow/templates';
+	import TemplateThumb from '$lib/charts/TemplateThumb.svelte';
 	import type { Widget, WidgetLayout } from '$lib/widgets/types';
+	import { toast } from 'svelte-sonner';
 	import TextTIcon from 'phosphor-svelte/lib/TextT';
 	import ChartBarIcon from 'phosphor-svelte/lib/ChartBar';
 	import TableIcon from 'phosphor-svelte/lib/Table';
 	import NumberCircleOneIcon from 'phosphor-svelte/lib/NumberCircleOne';
+	import CircleNotchIcon from 'phosphor-svelte/lib/CircleNotch';
 
 	let { open = $bindable(false) }: { open?: boolean } = $props();
+
+	let busyTemplate = $state<string | null>(null);
+
+	async function addPrebuilt(template: WorkflowTemplate) {
+		busyTemplate = template.id;
+		try {
+			await addTemplateToDashboard(template);
+			toast.success(`“${template.name}” added with its data source`);
+			open = false;
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : 'Could not load the template data.');
+		} finally {
+			busyTemplate = null;
+		}
+	}
 
 	const vizIcons = { chart: ChartBarIcon, grid: TableIcon, metric: NumberCircleOneIcon } as const;
 
@@ -82,6 +105,36 @@
 					No output nodes yet. Add a chart, table view or metric node to a workflow first.
 				</p>
 			{/if}
+
+			<p class="text-muted-foreground mt-2 px-1 text-[10px] font-semibold tracking-wide uppercase">
+				Prebuilt charts with data
+			</p>
+			<div class="grid grid-cols-2 gap-1.5">
+				{#each workflowTemplates as template (template.id)}
+					<button
+						type="button"
+						class="hover:border-primary/50 hover:bg-accent/40 flex items-center gap-2 rounded-lg border p-2 text-left transition-colors disabled:opacity-50"
+						disabled={busyTemplate !== null}
+						onclick={() => addPrebuilt(template)}
+					>
+						<span
+							class="bg-muted/40 flex h-9 w-14 shrink-0 items-center justify-center rounded border p-1"
+						>
+							{#if busyTemplate === template.id}
+								<CircleNotchIcon size={14} class="animate-spin" />
+							{:else}
+								<TemplateThumb kind={template.thumb} />
+							{/if}
+						</span>
+						<span class="min-w-0">
+							<span class="block truncate text-xs font-medium">{template.name}</span>
+							<span class="text-muted-foreground block truncate text-[10px]">
+								{template.dataLabel}
+							</span>
+						</span>
+					</button>
+				{/each}
+			</div>
 		</div>
 	</Dialog.Content>
 </Dialog.Root>

@@ -137,6 +137,12 @@ class WorkspaceStore {
 		this.push('widgets');
 	}
 
+	/** Swaps the whole dashboard, used when loading a prebuilt dashboard. */
+	replaceWidgets(widgets: Widget[]): void {
+		this.widgets = widgets;
+		this.push('widgets');
+	}
+
 	updateSettings(partial: Partial<DashboardSettings>): void {
 		this.settings = { ...this.settings, ...partial };
 		this.push('settings');

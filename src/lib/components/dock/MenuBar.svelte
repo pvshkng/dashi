@@ -4,8 +4,11 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import { workspaceStore } from '$lib/workspace/store.svelte';
 	import { loadExampleWorkspace } from '$lib/workspace/example';
+	import { dashboardPresets, loadDashboardPreset } from '$lib/workspace/prebuilt';
+	import type { DashboardPreset } from '$lib/workspace/prebuilt';
 	import { windowManager } from '$lib/windows/manager.svelte';
 	import { cn } from '$lib/utils';
+	import { toast } from 'svelte-sonner';
 	import EyeIcon from 'phosphor-svelte/lib/Eye';
 	import PencilSimpleIcon from 'phosphor-svelte/lib/PencilSimple';
 	import PlusIcon from 'phosphor-svelte/lib/Plus';
@@ -28,6 +31,21 @@
 		const file = (event.target as HTMLInputElement).files?.[0];
 		if (file) await workspaceStore.importFile(file);
 		if (fileInput) fileInput.value = '';
+	}
+
+	async function loadPreset(preset: DashboardPreset) {
+		if (
+			workspaceStore.widgets.length > 0 &&
+			!confirm(`Load “${preset.name}”? This replaces the current dashboard widgets.`)
+		) {
+			return;
+		}
+		try {
+			await loadDashboardPreset(preset);
+			toast.success(`Loaded “${preset.name}”`);
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : 'Could not load the dashboard data.');
+		}
 	}
 </script>
 
@@ -52,6 +70,20 @@
 					<Menubar.Item onclick={() => fileInput?.click()}>Import .dashi…</Menubar.Item>
 					<Menubar.Separator />
 					<Menubar.Item onclick={() => loadExampleWorkspace()}>Load example</Menubar.Item>
+				</Menubar.Content>
+			</Menubar.Menu>
+			<Menubar.Menu>
+				<Menubar.Trigger>Dashboards</Menubar.Trigger>
+				<Menubar.Content side="top" align="start" class="w-64">
+					<Menubar.GroupHeading>Prebuilt dashboards</Menubar.GroupHeading>
+					{#each dashboardPresets as preset (preset.id)}
+						<Menubar.Item onclick={() => loadPreset(preset)}>
+							<div class="min-w-0">
+								<p class="text-sm">{preset.name}</p>
+								<p class="text-muted-foreground truncate text-xs">{preset.tagline}</p>
+							</div>
+						</Menubar.Item>
+					{/each}
 				</Menubar.Content>
 			</Menubar.Menu>
 			<Menubar.Menu>
