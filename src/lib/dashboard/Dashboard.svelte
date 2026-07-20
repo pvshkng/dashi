@@ -328,6 +328,7 @@
 {:else}
 	<div
 		bind:clientWidth={containerWidth}
+		data-dashboard-canvas
 		class="relative w-full"
 		style={`height: ${containerHeight}px; --color-primary: ${scheme.primary}; ${gridStyle}`}
 	>

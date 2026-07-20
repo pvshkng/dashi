@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { FilterControl, ShapeKind, Widget, WidgetStyle } from '$lib/widgets/types';
 	import { workspaceStore } from '$lib/workspace/store.svelte';
+	import { exportWidgetPng, exportWidgetSvg } from '$lib/export/image';
+	import { toast } from 'svelte-sonner';
 	import * as Select from '$lib/components/ui/select';
 	import { Label } from '$lib/components/ui/label';
 	import { Input } from '$lib/components/ui/input';
@@ -90,6 +92,30 @@
 		</div>
 	{/if}
 	{#if widget.kind === 'viz'}
+		<div class="grid grid-cols-2 gap-2">
+			<Button
+				variant="outline"
+				size="sm"
+				class="text-xs"
+				onclick={async () => {
+					const ok = await exportWidgetPng(widget.id, widget.title || 'chart');
+					if (!ok) toast.error('No chart image found in this widget.');
+				}}
+			>
+				Export PNG
+			</Button>
+			<Button
+				variant="outline"
+				size="sm"
+				class="text-xs"
+				onclick={() => {
+					if (!exportWidgetSvg(widget.id, widget.title || 'chart'))
+						toast.error('No chart image found in this widget.');
+				}}
+			>
+				Export SVG
+			</Button>
+		</div>
 		<div class="space-y-1">
 			<Label class="text-xs">Auto-refresh (seconds, blank = off)</Label>
 			<Input

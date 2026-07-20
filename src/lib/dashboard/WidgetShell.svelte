@@ -83,6 +83,9 @@
 
 <div
 	role="presentation"
+	data-widget-id={widget.id}
+	data-widget-title={widget.title}
+	data-widget-chromeless={chromeless}
 	class={cn(
 		'group/shell relative flex h-full w-full flex-col overflow-hidden border',
 		!bare && 'backdrop-blur-md',
@@ -149,7 +152,11 @@
 			{/if}
 		</div>
 	{/if}
-	<div class="flex-1 overflow-hidden" style={`padding: ${style?.padding ?? (bare ? 0 : 8)}px`}>
+	<div
+		class="flex-1 overflow-hidden"
+		data-widget-body
+		style={`padding: ${style?.padding ?? (bare ? 0 : 8)}px`}
+	>
 		{@render children()}
 	</div>
 	{#if editable && chromeless}
