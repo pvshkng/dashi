@@ -46,7 +46,10 @@
 				onclick={() => onSelect?.(stage.label)}
 			>
 				<title>
-					{stage.label}: {formatValue(stage.value, format)} ({((stage.value / maxValue) * 100).toFixed(1)}%)
+					{stage.label}: {formatValue(stage.value, format)} ({(
+						(stage.value / maxValue) *
+						100
+					).toFixed(1)}%)
 				</title>
 			</rect>
 			<text

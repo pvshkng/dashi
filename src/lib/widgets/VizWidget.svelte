@@ -17,9 +17,7 @@
 	let runState = $derived(workflow ? workflowRuntime.get(workflow.id) : undefined);
 	let result = $derived(runState?.run?.results[widget.config.nodeId]);
 
-	let chartConfig = $derived(
-		node?.kind === 'chart' ? (node.config as ChartNodeConfig) : undefined
-	);
+	let chartConfig = $derived(node?.kind === 'chart' ? (node.config as ChartNodeConfig) : undefined);
 	let drillDims = $derived(chartConfig?.drillDimensions ?? []);
 	let drilling = $derived(drillDims.length > 0);
 	let drillPath = $state<{ column: string; value: string }[]>([]);

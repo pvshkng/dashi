@@ -1,42 +1,72 @@
-# sv
+# dashi
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Open-source BI in your browser. Connect data, shape it with visual workflows, and pin the
+results to dashboards — powered by [DuckDB](https://duckdb.org) running locally via WASM,
+with a desktop-like multi-window UI built on SvelteKit + Svelte 5.
 
-## Creating a project
+## Features
 
-If you're seeing this, you've probably already done this step. Congrats!
+### Data connections
 
-```sh
-# create a new project
-npx sv create my-app
-```
+- **Files**: CSV, Excel, Parquet, JSON/NDJSON — loaded into in-browser DuckDB, nothing is uploaded.
+- **Remote files (URL)**: point at any https CSV/Parquet/JSON file; DuckDB reads it directly.
+- **Databases** (via the server proxy): Postgres, MySQL, SQLite, DuckDB database files.
+- SQL editor (Data Studio) with schema tree, history, and local + remote targets.
 
-To recreate this project with the same configuration:
+### Workflows (visual ETL)
 
-```sh
-# recreate this project
-bun x sv@0.16.2 create --template minimal --types ts --add prettier eslint vitest="usages:unit,component" playwright tailwindcss="plugins:forms,typography" sveltekit-adapter="adapter:auto" mdsvex storybook mcp="ide:claude-code+setup:local" --install bun dashi
-```
+- Node-based editor: table/SQL sources → transforms → chart/table/metric/pivot outputs.
+- Transforms: filter, select, formula, aggregate (count, distinct, sum, avg, min, max,
+  median, stddev), join, union, sort, limit, **pivot, unpivot, window (running totals,
+  moving averages, % change, lag/lead, rank), dedupe, sample, cast, rename**.
+- **Workflow parameters**: define `{{name}}` values once, reference them in SQL, formulas
+  and filter values.
+- **AI assistant**: describe what you want in plain language; a schema-aware prompt against
+  any OpenAI-compatible endpoint (including local Ollama) generates an editable SQL node.
+- Download any node's full result as CSV or JSON.
+
+### Charts & visualization
+
+- 15 chart types: line, bar, horizontal/stacked/grouped bar, area, scatter, pie, donut,
+  histogram, heatmap, funnel, waterfall, gauge, treemap.
+- Number formatting everywhere: currency, percent, compact, fixed decimals.
+- Interactive pivot table output with row/column dimensions, aggregations and totals.
+- Sortable, exportable data tables.
+
+### Dashboards
+
+- Grid + freeform layouts, themes, shapes/text widgets, presentation mode, mobile preview.
+- **Cross-filtering**: click a bar, funnel stage, treemap tile, heatmap cell or table cell
+  and every widget sharing that column filters; active filters show as removable chips.
+- **Filter widgets**: dropdown, multi-select, search, number range, date range controls.
+- **Drill-down**: give a chart a dimension hierarchy and click to descend, with breadcrumbs.
+- **Metric alerts**: threshold rules highlight the metric and raise a notification.
+- **Auto-refresh** per widget, undo/redo (⌘Z / ⇧⌘Z), and exports: chart PNG/SVG,
+  self-contained static HTML snapshot of the whole dashboard, print/PDF, and portable
+  `.dashi` workspace files.
+
+### Reports
+
+- Notebook-style documents mixing markdown cells with live SQL cells (tables and charts),
+  exportable as standalone HTML.
 
 ## Developing
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
 ```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+bun install
+bun run dev
 ```
 
 ## Building
 
-To create a production version of your app:
-
 ```sh
-npm run build
+bun run build
+bun run preview
 ```
 
-You can preview the production build with `npm run preview`.
+## Testing
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+```sh
+bun run test:unit   # vitest
+bun run test:e2e    # playwright
+```

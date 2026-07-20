@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { LineChart, BarChart, AreaChart, ScatterChart, PieChart } from 'layerchart';
+	import { LineChart, AreaChart, ScatterChart, PieChart } from 'layerchart';
 	import type { ChartNodeConfig } from '$lib/workflow/types';
 	import { getColorScheme } from './theme';
 	import { toNumber } from './format';
@@ -22,7 +22,9 @@
 
 	let scheme = $derived(getColorScheme(config.colorScheme));
 	let ready = $derived(
-		config.chartType === 'gauge' ? Boolean(config.y) : Boolean(config.x && (config.y || config.chartType === 'histogram'))
+		config.chartType === 'gauge'
+			? Boolean(config.y)
+			: Boolean(config.x && (config.y || config.chartType === 'histogram'))
 	);
 	let paletteStyle = $derived(
 		[
@@ -156,9 +158,21 @@
 			onSelect={selectX}
 		/>
 	{:else if config.chartType === 'waterfall'}
-		<WaterfallChart {rows} x={config.x} y={config.y} colors={scheme.colors} format={config.format} />
+		<WaterfallChart
+			{rows}
+			x={config.x}
+			y={config.y}
+			colors={scheme.colors}
+			format={config.format}
+		/>
 	{:else if config.chartType === 'gauge'}
-		<GaugeChart {rows} y={config.y} max={config.max} color={scheme.primary} format={config.format} />
+		<GaugeChart
+			{rows}
+			y={config.y}
+			max={config.max}
+			color={scheme.primary}
+			format={config.format}
+		/>
 	{:else if config.chartType === 'treemap'}
 		<TreemapChart
 			{rows}

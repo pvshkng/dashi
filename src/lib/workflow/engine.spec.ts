@@ -74,7 +74,9 @@ describe('compileTransform', () => {
 			}),
 			input
 		);
-		expect(sql).toContain('sum("sales") over (partition by "region" order by "month" rows unbounded preceding)');
+		expect(sql).toContain(
+			'sum("sales") over (partition by "region" order by "month" rows unbounded preceding)'
+		);
 	});
 
 	it('compiles moving averages with a bounded frame', () => {
@@ -114,9 +116,9 @@ describe('compileTransform', () => {
 		expect(compileTransform(node('cast', { column: 'amount', type: 'double' }), input)).toBe(
 			'select * replace (cast("amount" as double) as "amount") from src'
 		);
-		expect(
-			compileTransform(node('rename', { renames: [{ from: 'a', to: 'b' }] }), input)
-		).toBe('select * rename ("a" as "b") from src');
+		expect(compileTransform(node('rename', { renames: [{ from: 'a', to: 'b' }] }), input)).toBe(
+			'select * rename ("a" as "b") from src'
+		);
 	});
 
 	it('compiles pivot and unpivot', () => {

@@ -36,10 +36,7 @@
 	{#if !config.column}
 		<p class="text-muted-foreground text-sm">Pick a value column.</p>
 	{:else}
-		<p
-			class="text-3xl font-semibold tracking-tight tabular-nums"
-			class:text-destructive={breached}
-		>
+		<p class="text-3xl font-semibold tracking-tight tabular-nums" class:text-destructive={breached}>
 			{config.prefix ?? ''}{display}{config.suffix ?? ''}
 		</p>
 		{#if config.label}

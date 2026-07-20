@@ -25,7 +25,12 @@ export function downloadBlob(name: string, mime: string, content: string | Blob)
 }
 
 function safeName(label: string): string {
-	return label.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-').replaceAll(/^-|-$/g, '') || 'data';
+	return (
+		label
+			.toLowerCase()
+			.replaceAll(/[^a-z0-9]+/g, '-')
+			.replaceAll(/^-|-$/g, '') || 'data'
+	);
 }
 
 /** Downloads the full result of a workflow node (must have been run first). */

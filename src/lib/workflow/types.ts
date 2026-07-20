@@ -28,14 +28,7 @@ export interface FilterCondition {
 }
 
 export type AggregateFn =
-	| 'count'
-	| 'count_distinct'
-	| 'sum'
-	| 'avg'
-	| 'min'
-	| 'max'
-	| 'median'
-	| 'stddev';
+	'count' | 'count_distinct' | 'sum' | 'avg' | 'min' | 'max' | 'median' | 'stddev';
 
 export interface AggregateSpec {
 	fn: AggregateFn;
@@ -133,13 +126,7 @@ export interface UnpivotNodeConfig {
 }
 
 export type WindowFn =
-	| 'row_number'
-	| 'rank'
-	| 'lag'
-	| 'lead'
-	| 'cumulative_sum'
-	| 'moving_avg'
-	| 'pct_change';
+	'row_number' | 'rank' | 'lag' | 'lead' | 'cumulative_sum' | 'moving_avg' | 'pct_change';
 
 export interface WindowNodeConfig {
 	fn: WindowFn;

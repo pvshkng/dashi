@@ -83,10 +83,7 @@ export interface DuckDbConnection {
 
 export type FileConnection = CsvConnection | ExcelConnection | ParquetConnection | JsonConnection;
 export type ServerConnection =
-	| PostgresConnection
-	| MySqlConnection
-	| SqliteConnection
-	| DuckDbConnection;
+	PostgresConnection | MySqlConnection | SqliteConnection | DuckDbConnection;
 
 export type DataConnection = FileConnection | UrlConnection | ServerConnection;
 

@@ -257,7 +257,9 @@
 						<Label>File path (server-accessible)</Label>
 						<Input
 							bind:value={filePath}
-							placeholder={kind === 'duckdb' ? '/path/to/database.duckdb' : '/path/to/database.sqlite'}
+							placeholder={kind === 'duckdb'
+								? '/path/to/database.duckdb'
+								: '/path/to/database.sqlite'}
 						/>
 					</div>
 				{/if}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SvelteMap } from 'svelte/reactivity';
 	import type { ValueFormat } from '$lib/workflow/types';
 	import { formatValue, toNumber } from './format';
 
@@ -44,12 +45,12 @@
 	);
 
 	let bars = $derived.by<Bar[]>(() => {
-		const byCategory = new Map<string, Map<string, number>>();
+		const byCategory = new SvelteMap<string, Map<string, number>>();
 		for (const row of rows) {
 			const category = String(row[x] ?? '');
 			const key = hasSeries ? String(row[series!] ?? '') : '';
 			const value = toNumber(row[y]) ?? 0;
-			if (!byCategory.has(category)) byCategory.set(category, new Map());
+			if (!byCategory.has(category)) byCategory.set(category, new SvelteMap());
 			const inner = byCategory.get(category)!;
 			inner.set(key, (inner.get(key) ?? 0) + value);
 		}

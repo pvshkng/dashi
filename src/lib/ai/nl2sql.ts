@@ -9,9 +9,7 @@ export async function buildSchemaContext(connections: DataConnection[]): Promise
 	for (const connection of connections) {
 		if (!isLocalConnection(connection)) continue;
 		try {
-			const columns = await runQuery(
-				`describe "${connection.tableName.replaceAll('"', '""')}"`
-			);
+			const columns = await runQuery(`describe "${connection.tableName.replaceAll('"', '""')}"`);
 			const spec = columns
 				.map((col) => `${String(col.column_name)} ${String(col.column_type)}`)
 				.join(', ');

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import type { AggregateFn, PivotTableNodeConfig } from '$lib/workflow/types';
 	import { formatValue, toNumber } from './format';
 
@@ -28,8 +29,7 @@
 			case 'stddev': {
 				const mean = values.reduce((a, b) => a + b, 0) / values.length;
 				if (values.length < 2) return 0;
-				const variance =
-					values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / (values.length - 1);
+				const variance = values.reduce((sum, v) => sum + (v - mean) ** 2, 0) / (values.length - 1);
 				return Math.sqrt(variance);
 			}
 		}
@@ -37,11 +37,11 @@
 	}
 
 	let pivot = $derived.by(() => {
-		const cells = new Map<string, { values: number[]; raw: unknown[] }>();
+		const cells = new SvelteMap<string, { values: number[]; raw: unknown[] }>();
 		const rowKeySet: string[] = [];
 		const colKeySet: string[] = [];
-		const seenRow = new Set<string>();
-		const seenCol = new Set<string>();
+		const seenRow = new SvelteSet<string>();
+		const seenCol = new SvelteSet<string>();
 
 		for (const row of rows) {
 			const rowKey = config.rows.map((c) => String(row[c] ?? '')).join(SEP) || 'All';

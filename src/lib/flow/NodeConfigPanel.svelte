@@ -157,9 +157,7 @@
 				value={format?.style ?? 'auto'}
 				onValueChange={(value) =>
 					onchange(
-						value === 'auto'
-							? undefined
-							: { ...format, style: value as ValueFormat['style'] }
+						value === 'auto' ? undefined : { ...format, style: value as ValueFormat['style'] }
 					)}
 			>
 				<Select.Trigger class="h-8 flex-1 text-xs">{format?.style ?? 'auto'}</Select.Trigger>

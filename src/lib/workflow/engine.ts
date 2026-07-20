@@ -290,7 +290,8 @@ export function compileTransform(
 		case 'sample': {
 			const config = node.config as SampleNodeConfig;
 			const value = Math.max(0, config.value || 0);
-			const unit = config.mode === 'percent' ? `${Math.min(100, value)} percent` : `${Math.floor(value)} rows`;
+			const unit =
+				config.mode === 'percent' ? `${Math.min(100, value)} percent` : `${Math.floor(value)} rows`;
 			return `select * from ${input} using sample ${unit}`;
 		}
 		case 'cast': {

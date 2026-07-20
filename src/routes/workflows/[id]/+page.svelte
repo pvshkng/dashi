@@ -80,8 +80,8 @@
 					</Popover.Trigger>
 					<Popover.Content class="w-80 space-y-2" align="end">
 						<Label class="text-xs">
-							Parameters — use <code class="font-mono">{'{{name}}'}</code> in SQL, formulas and
-							filter values.
+							Parameters — use <code class="font-mono">{'{{name}}'}</code> in SQL, formulas and filter
+							values.
 						</Label>
 						{#each workflow?.params ?? [] as param, index (index)}
 							<div class="flex items-center gap-1">
@@ -115,8 +115,7 @@
 									variant="ghost"
 									size="icon"
 									class="size-7 shrink-0"
-									onclick={() =>
-										setParams((workflow?.params ?? []).filter((_, i) => i !== index))}
+									onclick={() => setParams((workflow?.params ?? []).filter((_, i) => i !== index))}
 								>
 									<TrashIcon size={12} />
 								</Button>
@@ -127,7 +126,10 @@
 							size="sm"
 							class="w-full text-xs"
 							onclick={() =>
-								setParams([...(workflow?.params ?? []), { name: `param${(workflow?.params?.length ?? 0) + 1}`, value: '' }])}
+								setParams([
+									...(workflow?.params ?? []),
+									{ name: `param${(workflow?.params?.length ?? 0) + 1}`, value: '' }
+								])}
 						>
 							<PlusIcon size={12} />
 							Add parameter

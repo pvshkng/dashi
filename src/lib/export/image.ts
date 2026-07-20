@@ -69,9 +69,7 @@ export async function exportWidgetPng(widgetId: string, name: string): Promise<b
 		context.fillStyle = '#ffffff';
 		context.fillRect(0, 0, canvas.width, canvas.height);
 		context.drawImage(image, 0, 0, canvas.width, canvas.height);
-		const blob = await new Promise<Blob | null>((resolve) =>
-			canvas.toBlob(resolve, 'image/png')
-		);
+		const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
 		if (!blob) return false;
 		downloadBlob(`${name}.png`, 'image/png', blob);
 		return true;

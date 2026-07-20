@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SvelteMap } from 'svelte/reactivity';
 	import type { ValueFormat } from '$lib/workflow/types';
 	import { formatValue, toNumber } from './format';
 
@@ -67,8 +68,22 @@
 				const length = item.area / thickness;
 				tiles.push(
 					vertical
-						? { label: item.label, value: item.value, x: x0, y: y0 + offset, w: thickness, h: length }
-						: { label: item.label, value: item.value, x: x0 + offset, y: y0, w: length, h: thickness }
+						? {
+								label: item.label,
+								value: item.value,
+								x: x0,
+								y: y0 + offset,
+								w: thickness,
+								h: length
+							}
+						: {
+								label: item.label,
+								value: item.value,
+								x: x0 + offset,
+								y: y0,
+								w: length,
+								h: thickness
+							}
 				);
 				offset += length;
 			}
@@ -95,7 +110,7 @@
 	}
 
 	let tiles = $derived.by(() => {
-		const byLabel = new Map<string, number>();
+		const byLabel = new SvelteMap<string, number>();
 		for (const row of rows) {
 			const label = String(row[x] ?? '');
 			byLabel.set(label, (byLabel.get(label) ?? 0) + (toNumber(row[y]) ?? 0));
@@ -133,11 +148,7 @@
 						: tile.label}
 				</text>
 				{#if tile.h > 40}
-					<text
-						x={tile.x + 6}
-						y={tile.y + 28}
-						class="pointer-events-none fill-white/80 text-[9px]"
-					>
+					<text x={tile.x + 6} y={tile.y + 28} class="pointer-events-none fill-white/80 text-[9px]">
 						{formatValue(tile.value, format)}
 					</text>
 				{/if}
