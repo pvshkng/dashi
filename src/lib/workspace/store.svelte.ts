@@ -44,13 +44,66 @@ export interface WorkspaceExport {
  * BroadcastChannel so a workflow edit in one window updates dashboards in
  * every other window (split screen).
  */
+interface HistoryEntry {
+	workflows: Workflow[];
+	widgets: Widget[];
+	settings: DashboardSettings;
+}
+
+const HISTORY_LIMIT = 50;
+
 class WorkspaceStore {
 	workflows = $state<Workflow[]>([]);
 	widgets = $state<Widget[]>([]);
 	settings = $state<DashboardSettings>({ ...defaultSettings });
 	loaded = $state(false);
+	canUndo = $state(false);
+	canRedo = $state(false);
 
 	private channel: BroadcastChannel | null = null;
+	private past: HistoryEntry[] = [];
+	private future: HistoryEntry[] = [];
+
+	private snapshotAll(): HistoryEntry {
+		return {
+			workflows: $state.snapshot(this.workflows) as Workflow[],
+			widgets: $state.snapshot(this.widgets) as Widget[],
+			settings: $state.snapshot(this.settings) as DashboardSettings
+		};
+	}
+
+	/** Records the current state before a mutation so it can be undone. */
+	private record(): void {
+		this.past = [...this.past.slice(-(HISTORY_LIMIT - 1)), this.snapshotAll()];
+		this.future = [];
+		this.canUndo = true;
+		this.canRedo = false;
+	}
+
+	private async restore(entry: HistoryEntry): Promise<void> {
+		this.workflows = entry.workflows;
+		this.widgets = entry.widgets;
+		this.settings = entry.settings;
+		await Promise.all([this.push('workflows'), this.push('widgets'), this.push('settings')]);
+	}
+
+	async undo(): Promise<void> {
+		const entry = this.past.pop();
+		if (!entry) return;
+		this.future.push(this.snapshotAll());
+		await this.restore(entry);
+		this.canUndo = this.past.length > 0;
+		this.canRedo = true;
+	}
+
+	async redo(): Promise<void> {
+		const entry = this.future.pop();
+		if (!entry) return;
+		this.past.push(this.snapshotAll());
+		await this.restore(entry);
+		this.canUndo = true;
+		this.canRedo = this.future.length > 0;
+	}
 
 	async init(): Promise<void> {
 		if (this.loaded) return;
@@ -93,11 +146,13 @@ class WorkspaceStore {
 	}
 
 	addWorkflow(workflow: Workflow): void {
+		this.record();
 		this.workflows = [...this.workflows, workflow];
 		this.push('workflows');
 	}
 
 	updateWorkflow(workflow: Workflow, options: { touch?: boolean } = {}): void {
+		this.record();
 		const index = this.workflows.findIndex((existing) => existing.id === workflow.id);
 		if (index === -1) return;
 		if (options.touch !== false) workflow.updatedAt = Date.now();
@@ -106,6 +161,7 @@ class WorkspaceStore {
 	}
 
 	removeWorkflow(id: string): void {
+		this.record();
 		this.workflows = this.workflows.filter((workflow) => workflow.id !== id);
 		this.widgets = this.widgets.filter(
 			(widget) => widget.kind !== 'viz' || widget.config.workflowId !== id
@@ -127,11 +183,13 @@ class WorkspaceStore {
 	}
 
 	addWidget(widget: Widget): void {
+		this.record();
 		this.widgets = [...this.widgets, widget];
 		this.push('widgets');
 	}
 
 	updateWidget(widget: Widget): void {
+		this.record();
 		const index = this.widgets.findIndex((existing) => existing.id === widget.id);
 		if (index === -1) return;
 		this.widgets[index] = widget;
@@ -139,17 +197,20 @@ class WorkspaceStore {
 	}
 
 	removeWidget(id: string): void {
+		this.record();
 		this.widgets = this.widgets.filter((widget) => widget.id !== id);
 		this.push('widgets');
 	}
 
 	/** Swaps the whole dashboard, used when loading a prebuilt dashboard. */
 	replaceWidgets(widgets: Widget[]): void {
+		this.record();
 		this.widgets = widgets;
 		this.push('widgets');
 	}
 
 	updateSettings(partial: Partial<DashboardSettings>): void {
+		this.record();
 		this.settings = { ...this.settings, ...partial };
 		this.push('settings');
 	}
@@ -173,6 +234,7 @@ class WorkspaceStore {
 	}
 
 	async importFile(file: File): Promise<void> {
+		this.record();
 		const doc = JSON.parse(await file.text()) as Partial<WorkspaceExport>;
 		if (doc.version !== 2 || !Array.isArray(doc.widgets) || !Array.isArray(doc.workflows)) {
 			throw new Error('Not a valid .dashi v2 file.');
