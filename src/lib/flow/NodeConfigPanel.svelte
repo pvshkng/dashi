@@ -21,7 +21,7 @@
 	import { getNodeDef, isVizKind } from '$lib/workflow/defs';
 	import { workflowRuntime } from '$lib/workflow/runtime.svelte';
 	import { connectionsStore } from '$lib/connections/store.svelte';
-	import { isFileConnection } from '$lib/connections/types';
+	import { isLocalConnection } from '$lib/connections/types';
 	import { listTables } from '$lib/query/schema';
 	import TableRenderer from '$lib/charts/TableRenderer.svelte';
 	import { colorSchemes } from '$lib/charts/theme';
@@ -94,7 +94,7 @@
 		if (node.kind !== 'table') return null;
 		const config = node.config as TableNodeConfig;
 		const connection = connectionsStore.connections.find((c) => c.id === config.connectionId);
-		if (!connection || isFileConnection(connection)) return null;
+		if (!connection || isLocalConnection(connection)) return null;
 		return listTables(connection).catch(() => [] as string[]);
 	});
 </script>
@@ -144,7 +144,7 @@
 						const connection = connectionsStore.connections.find((c) => c.id === value);
 						patch({
 							connectionId: value,
-							tableName: connection && isFileConnection(connection) ? connection.tableName : ''
+							tableName: connection && isLocalConnection(connection) ? connection.tableName : ''
 						});
 					}}
 				>

@@ -1,8 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import type { MySqlConnection, PostgresConnection, SqliteConnection } from '$lib/connections/types';
-
-type ServerConnection = PostgresConnection | MySqlConnection | SqliteConnection;
+import type { ServerConnection } from '$lib/connections/types';
 
 const dataDir = path.join(process.cwd(), '.data');
 const storeFile = path.join(dataDir, 'server-connections.json');

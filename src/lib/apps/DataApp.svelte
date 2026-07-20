@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { connectionsStore } from '$lib/connections/store.svelte';
-	import { isFileConnection, type DataConnection } from '$lib/connections/types';
+	import { isLocalConnection, type DataConnection } from '$lib/connections/types';
 	import { executeQuery } from '$lib/query/executeQuery';
 	import { runQueryWithColumns } from '$lib/duckdb/client';
 	import { runQuery } from '$lib/duckdb/client';
@@ -45,9 +45,9 @@
 	let schema = $state<SQLNamespace>({});
 
 	let serverConnections = $derived(
-		connectionsStore.connections.filter((c) => !isFileConnection(c))
+		connectionsStore.connections.filter((c) => !isLocalConnection(c))
 	);
-	let fileConnections = $derived(connectionsStore.connections.filter(isFileConnection));
+	let fileConnections = $derived(connectionsStore.connections.filter(isLocalConnection));
 	let activeConnection = $derived(
 		target === 'local' ? undefined : connectionsStore.connections.find((c) => c.id === target)
 	);

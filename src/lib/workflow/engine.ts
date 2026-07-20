@@ -1,5 +1,5 @@
 import type { DataConnection } from '$lib/connections/types';
-import { isFileConnection } from '$lib/connections/types';
+import { isLocalConnection } from '$lib/connections/types';
 import { executeQuery } from '$lib/query/executeQuery';
 import { materializeRows, runQuery, runQueryWithColumns } from '$lib/duckdb/client';
 import { getNodeDef } from './defs';
@@ -227,7 +227,7 @@ async function materializeSource(
 		}
 		const connection = connections.find((c) => c.id === config.connectionId);
 		if (!connection) throw new Error('Connection not found.');
-		if (isFileConnection(connection)) {
+		if (isLocalConnection(connection)) {
 			await runQuery(
 				`create or replace temp view ${view} as select * from ${qi(config.tableName)}`
 			);
@@ -244,7 +244,7 @@ async function materializeSource(
 	const config = node.config as SqlNodeConfig;
 	if (!config.sql.trim()) throw new Error('SQL query is empty.');
 	const connection = connections.find((c) => c.id === config.connectionId);
-	if (connection && !isFileConnection(connection)) {
+	if (connection && !isLocalConnection(connection)) {
 		const result = await executeQuery(connection, config.sql);
 		await materializeRows(`${view}_data`, result.columns, result.rows);
 		await runQuery(`create or replace temp view ${view} as select * from ${qi(`${view}_data`)}`);
