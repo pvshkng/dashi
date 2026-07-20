@@ -6,7 +6,9 @@
 	import MenuBar from '$lib/components/dock/MenuBar.svelte';
 	import { innerWidth } from 'svelte/reactivity/window';
 	import { getDashboardTheme, themeStyle } from '$lib/dashboard/themes';
+	import { dashboardFilters, filterLabel } from '$lib/dashboard/filters.svelte';
 	import XIcon from 'phosphor-svelte/lib/X';
+	import FunnelIcon from 'phosphor-svelte/lib/Funnel';
 
 	let editable = $state(false);
 	let mobilePreview = $state(false);
@@ -49,8 +51,39 @@
 <svelte:document onfullscreenchange={onFullscreenChange} />
 <svelte:window onkeydown={onKeydown} />
 
+{#snippet filterBar()}
+	{#if dashboardFilters.filters.length > 0}
+		<div class="mb-2 flex flex-wrap items-center gap-1.5 px-1">
+			<FunnelIcon size={13} class="text-muted-foreground" />
+			{#each dashboardFilters.filters as filter (filter.id)}
+				<span
+					class="bg-background/70 inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs backdrop-blur-sm"
+				>
+					{filterLabel(filter)}
+					<button
+						type="button"
+						class="text-muted-foreground hover:text-foreground"
+						aria-label="Remove filter"
+						onclick={() => dashboardFilters.remove(filter.id)}
+					>
+						<XIcon size={11} />
+					</button>
+				</span>
+			{/each}
+			<button
+				type="button"
+				class="text-muted-foreground hover:text-foreground text-xs underline-offset-2 hover:underline"
+				onclick={() => dashboardFilters.clearAll()}
+			>
+				Clear all
+			</button>
+		</div>
+	{/if}
+{/snippet}
+
 <div class="min-h-[100vh]" style={canvasStyle}>
 	<main class="p-4 pb-24">
+		{@render filterBar()}
 		<Dashboard
 			colorScheme={workspaceStore.settings.colorScheme}
 			showGrid={workspaceStore.settings.showGrid}
@@ -80,6 +113,7 @@
 		style={canvasStyle}
 	>
 		<main class="p-8">
+			{@render filterBar()}
 			<Dashboard
 				colorScheme={workspaceStore.settings.colorScheme}
 				showGrid={false}

@@ -1,5 +1,6 @@
 <script lang="ts">
-	import type { ShapeKind, Widget, WidgetStyle } from '$lib/widgets/types';
+	import type { FilterControl, ShapeKind, Widget, WidgetStyle } from '$lib/widgets/types';
+	import { workspaceStore } from '$lib/workspace/store.svelte';
 	import * as Select from '$lib/components/ui/select';
 	import { Label } from '$lib/components/ui/label';
 	import { Input } from '$lib/components/ui/input';
@@ -37,6 +38,22 @@
 		arrow: 'Arrow'
 	};
 	let showHeader = $derived(style?.showHeader ?? widget.kind !== 'shape');
+	const controlLabels: Record<FilterControl, string> = {
+		dropdown: 'Dropdown',
+		multi: 'Multi-select',
+		search: 'Search box',
+		range: 'Number range',
+		daterange: 'Date range'
+	};
+	let optionNodes = $derived(
+		workspaceStore.workflows.flatMap((workflow) =>
+			workflow.nodes.map((node) => ({
+				workflowId: workflow.id,
+				nodeId: node.id,
+				label: `${workflow.name} · ${node.label}`
+			}))
+		)
+	);
 	const aligns = [
 		{ value: 'left', icon: TextAlignLeftIcon },
 		{ value: 'center', icon: TextAlignCenterIcon },
@@ -71,6 +88,93 @@
 					})}
 			/>
 		</div>
+	{/if}
+	{#if widget.kind === 'viz'}
+		<div class="space-y-1">
+			<Label class="text-xs">Auto-refresh (seconds, blank = off)</Label>
+			<Input
+				type="number"
+				value={widget.config.refreshSec ?? ''}
+				class="h-8 text-xs"
+				placeholder="off"
+				onchange={(event) => {
+					const raw = (event.target as HTMLInputElement).value;
+					onChange({
+						...widget,
+						config: { ...widget.config, refreshSec: raw === '' ? undefined : Number(raw) }
+					});
+				}}
+			/>
+		</div>
+	{/if}
+	{#if widget.kind === 'filter'}
+		<div class="space-y-1">
+			<Label class="text-xs">Column to filter</Label>
+			<Input
+				value={widget.config.column}
+				class="h-8 font-mono text-xs"
+				placeholder="column name"
+				onchange={(event) =>
+					onChange({
+						...widget,
+						config: { ...widget.config, column: (event.target as HTMLInputElement).value }
+					})}
+			/>
+			<p class="text-muted-foreground text-[10px]">
+				Applies to every widget whose data contains this column.
+			</p>
+		</div>
+		<div class="space-y-1">
+			<Label class="text-xs">Control</Label>
+			<Select.Root
+				type="single"
+				value={widget.config.control}
+				onValueChange={(value) =>
+					onChange({
+						...widget,
+						config: { ...widget.config, control: value as FilterControl }
+					})}
+			>
+				<Select.Trigger class="h-8 w-full text-xs">
+					{controlLabels[widget.config.control]}
+				</Select.Trigger>
+				<Select.Content>
+					{#each Object.entries(controlLabels) as [value, label] (value)}
+						<Select.Item {value} {label} />
+					{/each}
+				</Select.Content>
+			</Select.Root>
+		</div>
+		{#if widget.config.control === 'dropdown' || widget.config.control === 'multi'}
+			<div class="space-y-1">
+				<Label class="text-xs">Options from node</Label>
+				<Select.Root
+					type="single"
+					value={widget.config.optionsNodeId ?? ''}
+					onValueChange={(value) => {
+						const option = optionNodes.find((n) => n.nodeId === value);
+						onChange({
+							...widget,
+							config: {
+								...widget.config,
+								optionsWorkflowId: option?.workflowId,
+								optionsNodeId: option?.nodeId
+							}
+						});
+					}}
+				>
+					<Select.Trigger class="h-8 w-full text-xs">
+						{optionNodes.find((n) => n.nodeId === widget.config.optionsNodeId)?.label ??
+							'Pick a node'}
+					</Select.Trigger>
+					<Select.Content>
+						{#each optionNodes as option (option.nodeId)}
+							<Select.Item value={option.nodeId} label={option.label} />
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			</div>
+		{/if}
 	{/if}
 	{#if widget.kind === 'shape'}
 		<div class="space-y-1">

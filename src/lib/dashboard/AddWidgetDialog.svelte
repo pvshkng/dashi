@@ -16,6 +16,7 @@
 	import ChartBarIcon from 'phosphor-svelte/lib/ChartBar';
 	import TableIcon from 'phosphor-svelte/lib/Table';
 	import NumberCircleOneIcon from 'phosphor-svelte/lib/NumberCircleOne';
+	import FunnelIcon from 'phosphor-svelte/lib/Funnel';
 	import CircleNotchIcon from 'phosphor-svelte/lib/CircleNotch';
 	import SquareIcon from 'phosphor-svelte/lib/Square';
 	import CircleIcon from 'phosphor-svelte/lib/Circle';
@@ -79,6 +80,18 @@
 		{ shape: 'arrow', label: 'Arrow', icon: ArrowRightIcon }
 	];
 
+	function addFilter() {
+		const widget: Widget = {
+			id: crypto.randomUUID(),
+			title: 'Filter',
+			kind: 'filter',
+			layout: nextLayout(3, 1),
+			config: { column: '', control: 'dropdown' }
+		};
+		workspaceStore.addWidget(widget);
+		open = false;
+	}
+
 	function addShape(shape: ShapeKind) {
 		const widget: Widget = {
 			id: crypto.randomUUID(),
@@ -125,6 +138,10 @@
 				<Button variant="outline" class="justify-start" onclick={() => addText(false)}>
 					<TextTIcon size={16} />
 					Text block
+				</Button>
+				<Button variant="outline" class="justify-start" onclick={addFilter}>
+					<FunnelIcon size={16} />
+					Filter control
 				</Button>
 			</div>
 			<div class="grid grid-cols-5 gap-1.5">

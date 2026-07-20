@@ -6,6 +6,7 @@
 	import VizWidget from '$lib/widgets/VizWidget.svelte';
 	import TextWidget from '$lib/widgets/TextWidget.svelte';
 	import ShapeWidget from '$lib/widgets/ShapeWidget.svelte';
+	import FilterWidget from '$lib/widgets/FilterWidget.svelte';
 	import FloatingWindow from '$lib/windows/FloatingWindow.svelte';
 	import { windowManager } from '$lib/windows/manager.svelte';
 	import { getColorScheme } from '$lib/charts/theme';
@@ -299,6 +300,8 @@
 		<VizWidget {widget} />
 	{:else if widget.kind === 'shape'}
 		<ShapeWidget {widget} />
+	{:else if widget.kind === 'filter'}
+		<FilterWidget {widget} />
 	{/if}
 {/snippet}
 

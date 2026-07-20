@@ -22,6 +22,19 @@ export interface TextWidgetConfig {
 export interface VizWidgetConfig {
 	workflowId: string;
 	nodeId: string;
+	/** Re-run the backing workflow every N seconds. */
+	refreshSec?: number;
+}
+
+export type FilterControl = 'dropdown' | 'multi' | 'search' | 'range' | 'daterange';
+
+/** Dashboard-level filter control; applies to every viz widget sharing the column. */
+export interface FilterWidgetConfig {
+	column: string;
+	control: FilterControl;
+	/** Node whose result provides the dropdown options. */
+	optionsWorkflowId?: string;
+	optionsNodeId?: string;
 }
 
 export type ShapeKind = 'rectangle' | 'ellipse' | 'triangle' | 'line' | 'arrow';
@@ -33,7 +46,7 @@ export interface ShapeWidgetConfig {
 	strokeWidth: number;
 }
 
-export type WidgetKind = 'text' | 'viz' | 'shape';
+export type WidgetKind = 'text' | 'viz' | 'shape' | 'filter';
 
 /**
  * Visual customization for a widget, edited via the settings window.
@@ -79,4 +92,9 @@ export interface ShapeWidget extends WidgetBase {
 	config: ShapeWidgetConfig;
 }
 
-export type Widget = TextWidget | VizWidget | ShapeWidget;
+export interface FilterWidget extends WidgetBase {
+	kind: 'filter';
+	config: FilterWidgetConfig;
+}
+
+export type Widget = TextWidget | VizWidget | ShapeWidget | FilterWidget;
