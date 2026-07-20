@@ -7,6 +7,11 @@
 	import { Switch } from '$lib/components/ui/switch';
 	import { Button } from '$lib/components/ui/button';
 	import * as Select from '$lib/components/ui/select';
+	import { Separator } from '$lib/components/ui/separator';
+	import { aiSettings } from '$lib/ai/settings.svelte';
+	import { onMount } from 'svelte';
+
+	onMount(() => aiSettings.load());
 </script>
 
 <div class="flex h-full flex-col gap-4 p-3">
@@ -88,5 +93,36 @@
 			</Button>
 		</div>
 		<p class="text-muted-foreground text-xs">Reset falls back to the app theme background.</p>
+	</div>
+
+	<Separator />
+	<p class="text-muted-foreground text-xs font-medium tracking-wide uppercase">AI assistant</p>
+	<div class="space-y-1">
+		<Label>Endpoint (OpenAI-compatible)</Label>
+		<Input
+			value={aiSettings.settings.endpoint}
+			placeholder="http://localhost:11434/v1"
+			onchange={(event) =>
+				aiSettings.update({ endpoint: (event.target as HTMLInputElement).value })}
+		/>
+		<p class="text-muted-foreground text-xs">
+			Works with Ollama, OpenAI, or any compatible server. Stored locally in your browser.
+		</p>
+	</div>
+	<div class="space-y-1">
+		<Label>Model</Label>
+		<Input
+			value={aiSettings.settings.model}
+			placeholder="llama3.1"
+			onchange={(event) => aiSettings.update({ model: (event.target as HTMLInputElement).value })}
+		/>
+	</div>
+	<div class="space-y-1">
+		<Label>API key (optional)</Label>
+		<Input
+			type="password"
+			value={aiSettings.settings.apiKey}
+			onchange={(event) => aiSettings.update({ apiKey: (event.target as HTMLInputElement).value })}
+		/>
 	</div>
 </div>

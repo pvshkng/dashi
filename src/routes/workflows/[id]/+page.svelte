@@ -8,7 +8,9 @@
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import * as Popover from '$lib/components/ui/popover';
-	import type { WorkflowParam } from '$lib/workflow/types';
+	import type { WorkflowNode, WorkflowParam } from '$lib/workflow/types';
+	import AiAssistantDialog from '$lib/ai/AiAssistantDialog.svelte';
+	import SparkleIcon from 'phosphor-svelte/lib/Sparkle';
 	import ArrowLeftIcon from 'phosphor-svelte/lib/ArrowLeft';
 	import PlayIcon from 'phosphor-svelte/lib/Play';
 	import CircleNotchIcon from 'phosphor-svelte/lib/CircleNotch';
@@ -29,6 +31,21 @@
 		if (!workflow) return;
 		workspaceStore.updateWorkflow({ ...$state.snapshot(workflow), params });
 	}
+
+	let aiOpen = $state(false);
+
+	function addAiSqlNode(sql: string, question: string) {
+		if (!workflow) return;
+		const snapshot = $state.snapshot(workflow);
+		const node: WorkflowNode<'sql'> = {
+			id: crypto.randomUUID(),
+			kind: 'sql',
+			label: question.slice(0, 40) || 'AI query',
+			position: { x: 80, y: 80 + snapshot.nodes.length * 24 },
+			config: { connectionId: '', sql }
+		};
+		workspaceStore.updateWorkflow({ ...snapshot, nodes: [...snapshot.nodes, node] });
+	}
 </script>
 
 <svelte:head><title>{workflow?.name ?? 'Workflow'} — Dashi</title></svelte:head>
@@ -45,6 +62,10 @@
 				onchange={(event) => rename((event.target as HTMLInputElement).value)}
 			/>
 			<div class="ml-auto flex items-center gap-2">
+				<Button variant="outline" size="sm" class="h-7 text-xs" onclick={() => (aiOpen = true)}>
+					<SparkleIcon size={14} />
+					Ask AI
+				</Button>
 				<Popover.Root>
 					<Popover.Trigger>
 						{#snippet child({ props })}
@@ -140,6 +161,7 @@
 			</SvelteFlowProvider>
 		</div>
 	</div>
+	<AiAssistantDialog bind:open={aiOpen} onAccept={addAiSqlNode} />
 {:else if workspaceStore.loaded}
 	<main
 		class="text-muted-foreground flex h-[100vh] flex-col items-center justify-center gap-3 text-sm"
