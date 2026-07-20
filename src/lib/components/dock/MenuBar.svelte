@@ -10,6 +10,7 @@
 	import { resolve } from '$app/paths';
 	import { cn } from '$lib/utils';
 	import { toast } from 'svelte-sonner';
+	import { exportDashboardHtml } from '$lib/export/staticHtml';
 	import EyeIcon from 'phosphor-svelte/lib/Eye';
 	import PencilSimpleIcon from 'phosphor-svelte/lib/PencilSimple';
 	import PlusIcon from 'phosphor-svelte/lib/Plus';
@@ -62,7 +63,7 @@
 	onchange={onFileChosen}
 />
 
-<div class="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center">
+<div class="pointer-events-none fixed inset-x-0 bottom-4 z-50 flex justify-center print:hidden">
 	<div
 		class="bg-background/60 pointer-events-auto flex items-center gap-1 rounded-2xl border px-2 py-1 shadow-xl ring-1 ring-black/5 backdrop-blur-2xl"
 		style="padding-bottom: max(0.25rem, env(safe-area-inset-bottom) / 2)"
@@ -76,6 +77,25 @@
 				<Menubar.Content side="top" align="start">
 					<Menubar.Item onclick={() => workspaceStore.exportFile()}>Export .dashi</Menubar.Item>
 					<Menubar.Item onclick={() => fileInput?.click()}>Import .dashi…</Menubar.Item>
+					<Menubar.Separator />
+					<Menubar.Item
+						onclick={() => {
+							if (!exportDashboardHtml(workspaceStore.settings.name))
+								toast.error('Nothing to export yet.');
+						}}
+					>
+						Export static HTML
+					</Menubar.Item>
+					<Menubar.Item onclick={() => window.print()}>Print / PDF…</Menubar.Item>
+					<Menubar.Separator />
+					<Menubar.Item disabled={!workspaceStore.canUndo} onclick={() => workspaceStore.undo()}>
+						Undo
+						<Menubar.Shortcut>⌘Z</Menubar.Shortcut>
+					</Menubar.Item>
+					<Menubar.Item disabled={!workspaceStore.canRedo} onclick={() => workspaceStore.redo()}>
+						Redo
+						<Menubar.Shortcut>⇧⌘Z</Menubar.Shortcut>
+					</Menubar.Item>
 					<Menubar.Separator />
 					<Menubar.Item onclick={() => loadExampleWorkspace()}>Load example</Menubar.Item>
 				</Menubar.Content>

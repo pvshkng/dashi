@@ -7,6 +7,8 @@
 	import DataApp from '$lib/apps/DataApp.svelte';
 	import WorkflowsApp from '$lib/apps/WorkflowsApp.svelte';
 	import DashboardsApp from '$lib/apps/DashboardsApp.svelte';
+	import ReportsApp from '$lib/apps/ReportsApp.svelte';
+	import NotebookIcon from 'phosphor-svelte/lib/Notebook';
 	import { workspaceStore } from '$lib/workspace/store.svelte';
 	import { loadExampleWorkspace } from '$lib/workspace/example';
 	import { Button } from '$lib/components/ui/button';
@@ -48,6 +50,12 @@
 			label: 'Dashboards',
 			icon: SquaresFourIcon,
 			window: { x: 170, y: 130, width: 940, height: 640 }
+		},
+		{
+			id: 'reports',
+			label: 'Reports',
+			icon: NotebookIcon,
+			window: { x: 200, y: 140, width: 920, height: 640 }
 		},
 		{
 			id: 'datasets',
@@ -214,6 +222,10 @@
 
 	<FloatingWindow id="dashboards" title="Dashboards" icon={SquaresFourIcon}>
 		<DashboardsApp />
+	</FloatingWindow>
+
+	<FloatingWindow id="reports" title="Reports" icon={NotebookIcon}>
+		<ReportsApp />
 	</FloatingWindow>
 
 	<FloatingWindow id="welcome" title="Welcome to Dashi" icon={HandWavingIcon} dockable={false}>

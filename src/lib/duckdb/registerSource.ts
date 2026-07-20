@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import { getConnection, getDuckDB } from './client';
-import type { CsvConnection, ExcelConnection, ParquetConnection } from '$lib/connections/types';
+import type { FileConnection, UrlConnection } from '$lib/connections/types';
 
 async function excelToCsvBuffer(buffer: ArrayBuffer, sheetName?: string): Promise<Uint8Array> {
 	const workbook = XLSX.read(buffer, { type: 'array' });
@@ -10,34 +10,37 @@ async function excelToCsvBuffer(buffer: ArrayBuffer, sheetName?: string): Promis
 	return new TextEncoder().encode(csv);
 }
 
-export async function registerFileBlob(
-	connection: CsvConnection | ExcelConnection | ParquetConnection,
-	blob: Blob
-): Promise<void> {
+function readerFor(format: 'csv' | 'parquet' | 'json', path: string): string {
+	const safe = path.replaceAll("'", "''");
+	if (format === 'parquet') return `read_parquet('${safe}')`;
+	if (format === 'json') return `read_json_auto('${safe}')`;
+	return `read_csv_auto('${safe}')`;
+}
+
+export async function registerFileBlob(connection: FileConnection, blob: Blob): Promise<void> {
 	const db = await getDuckDB();
 	const buffer = await blob.arrayBuffer();
-
 	const conn = await getConnection();
 
-	if (connection.kind === 'csv') {
-		await db.registerFileBuffer(connection.fileName, new Uint8Array(buffer));
-		await conn.query(
-			`create or replace table ${connection.tableName} as select * from read_csv_auto('${connection.fileName}')`
-		);
-		return;
-	}
-
+	let bytes: Uint8Array = new Uint8Array(buffer);
+	let format: 'csv' | 'parquet' | 'json' = 'csv';
 	if (connection.kind === 'excel') {
-		const csvBuffer = await excelToCsvBuffer(buffer, connection.sheetName);
-		await db.registerFileBuffer(connection.fileName, csvBuffer);
-		await conn.query(
-			`create or replace table ${connection.tableName} as select * from read_csv_auto('${connection.fileName}')`
-		);
-		return;
+		bytes = await excelToCsvBuffer(buffer, connection.sheetName);
+	} else if (connection.kind === 'parquet') {
+		format = 'parquet';
+	} else if (connection.kind === 'json') {
+		format = 'json';
 	}
 
-	await db.registerFileBuffer(connection.fileName, new Uint8Array(buffer));
+	await db.registerFileBuffer(connection.fileName, bytes);
 	await conn.query(
-		`create or replace table ${connection.tableName} as select * from read_parquet('${connection.fileName}')`
+		`create or replace table ${connection.tableName} as select * from ${readerFor(format, connection.fileName)}`
+	);
+}
+
+export async function registerUrlConnection(connection: UrlConnection): Promise<void> {
+	const conn = await getConnection();
+	await conn.query(
+		`create or replace view ${connection.tableName} as select * from ${readerFor(connection.format, connection.url)}`
 	);
 }

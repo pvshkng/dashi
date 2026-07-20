@@ -1,5 +1,5 @@
 import type { DataConnection } from '$lib/connections/types';
-import { isFileConnection } from '$lib/connections/types';
+import { isLocalConnection } from '$lib/connections/types';
 import { executeQuery } from './executeQuery';
 
 export interface ColumnInfo {
@@ -8,7 +8,7 @@ export interface ColumnInfo {
 }
 
 export async function listTables(connection: DataConnection): Promise<string[]> {
-	if (isFileConnection(connection)) return [connection.tableName];
+	if (isLocalConnection(connection)) return [connection.tableName];
 	const result = await executeQuery(
 		connection,
 		`select table_name from information_schema.tables where table_schema not in ('information_schema', 'pg_catalog') order by table_name`

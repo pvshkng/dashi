@@ -1,5 +1,10 @@
 import { DuckDBInstance } from '@duckdb/node-api';
-import type { MySqlConnection, PostgresConnection, SqliteConnection } from '$lib/connections/types';
+import type {
+	DuckDbConnection,
+	MySqlConnection,
+	PostgresConnection,
+	SqliteConnection
+} from '$lib/connections/types';
 
 interface QueryResult {
 	columns: string[];
@@ -55,6 +60,16 @@ export async function querySqlite(connection: SqliteConnection, sql: string): Pr
 			`attach '${connection.filePath}' as lite (type sqlite, read_only)`,
 			'use lite'
 		],
+		sql
+	);
+}
+
+export async function queryDuckDbFile(
+	connection: DuckDbConnection,
+	sql: string
+): Promise<QueryResult> {
+	return runOnAttachedDatabase(
+		[`attach '${connection.filePath}' as ddb (read_only)`, 'use ddb'],
 		sql
 	);
 }

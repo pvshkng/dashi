@@ -1,22 +1,30 @@
 import type { DataConnection } from '$lib/connections/types';
-import { isFileConnection } from '$lib/connections/types';
+import { isLocalConnection } from '$lib/connections/types';
 import { executeQuery } from '$lib/query/executeQuery';
 import { materializeRows, runQuery, runQueryWithColumns } from '$lib/duckdb/client';
 import { getNodeDef } from './defs';
 import type {
 	AggregateNodeConfig,
+	CastNodeConfig,
+	DedupeNodeConfig,
 	FilterCondition,
 	FilterNodeConfig,
 	FormulaNodeConfig,
 	JoinNodeConfig,
 	LimitNodeConfig,
+	PivotNodeConfig,
+	RenameNodeConfig,
+	SampleNodeConfig,
 	SelectNodeConfig,
 	SortNodeConfig,
 	SqlNodeConfig,
 	TableNodeConfig,
 	UnionNodeConfig,
+	UnpivotNodeConfig,
+	WindowNodeConfig,
 	Workflow,
-	WorkflowNode
+	WorkflowNode,
+	WorkflowParam
 } from './types';
 
 export interface NodeResult {
@@ -53,9 +61,18 @@ function hashId(value: string): string {
 }
 
 /** Unique per workflow+node; a truncated prefix collided across workflows sharing ids. */
-function viewName(workflowId: string, nodeId: string): string {
+export function viewName(workflowId: string, nodeId: string): string {
 	const clean = (s: string) => s.replaceAll(/[^a-zA-Z0-9]/g, '_');
 	return `wf_${hashId(workflowId)}_${hashId(nodeId)}_${clean(nodeId).slice(0, 12)}`;
+}
+
+/** Substitutes {{name}} placeholders with workflow parameter values. */
+export function interpolateParams(text: string, params: WorkflowParam[] | undefined): string {
+	if (!params || params.length === 0) return text;
+	return text.replaceAll(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g, (match, name: string) => {
+		const param = params.find((p) => p.name === name);
+		return param !== undefined ? param.value : match;
+	});
 }
 
 export function topologicalOrder(workflow: Workflow): string[] {
@@ -144,12 +161,18 @@ function filterClause(condition: FilterCondition): string {
 	}
 }
 
-function compileTransform(node: WorkflowNode, inputs: Record<string, string>): string {
+export function compileTransform(
+	node: WorkflowNode,
+	inputs: Record<string, string>,
+	params?: WorkflowParam[]
+): string {
 	const input = inputs.in;
 	switch (node.kind) {
 		case 'filter': {
 			const config = node.config as FilterNodeConfig;
-			const valid = config.conditions.filter((c) => c.column);
+			const valid = config.conditions
+				.filter((c) => c.column)
+				.map((c) => ({ ...c, value: interpolateParams(c.value, params) }));
 			if (valid.length === 0) return `select * from ${input}`;
 			const joiner = config.combinator === 'or' ? ' or ' : ' and ';
 			return `select * from ${input} where ${valid.map(filterClause).join(joiner)}`;
@@ -162,7 +185,8 @@ function compileTransform(node: WorkflowNode, inputs: Record<string, string>): s
 		case 'formula': {
 			const config = node.config as FormulaNodeConfig;
 			if (!config.expression.trim()) return `select * from ${input}`;
-			return `select *, (${config.expression}) as ${qi(config.alias || 'computed')} from ${input}`;
+			const expression = interpolateParams(config.expression, params);
+			return `select *, (${expression}) as ${qi(config.alias || 'computed')} from ${input}`;
 		}
 		case 'aggregate': {
 			const config = node.config as AggregateNodeConfig;
@@ -210,15 +234,88 @@ function compileTransform(node: WorkflowNode, inputs: Record<string, string>): s
 			const offset = config.offset > 0 ? ` offset ${config.offset}` : '';
 			return `select * from ${input} limit ${config.count}${offset}`;
 		}
+		case 'pivot': {
+			const config = node.config as PivotNodeConfig;
+			if (!config.on || !config.valueColumn) throw new Error('Pick pivot and value columns.');
+			const agg = `${config.fn === 'count_distinct' ? 'count' : config.fn}(${config.fn === 'count_distinct' ? 'distinct ' : ''}${qi(config.valueColumn)})`;
+			const groups =
+				config.groupBy.length > 0 ? ` group by ${config.groupBy.map(qi).join(', ')}` : '';
+			return `select * from (pivot ${input} on ${qi(config.on)} using ${agg}${groups})`;
+		}
+		case 'unpivot': {
+			const config = node.config as UnpivotNodeConfig;
+			if (config.columns.length === 0) throw new Error('Pick columns to unpivot.');
+			return `select * from (unpivot ${input} on ${config.columns.map(qi).join(', ')} into name ${qi(config.nameAlias || 'name')} value ${qi(config.valueAlias || 'value')})`;
+		}
+		case 'window': {
+			const config = node.config as WindowNodeConfig;
+			const alias = qi(config.alias || 'window_value');
+			const partition =
+				config.partitionBy.length > 0
+					? `partition by ${config.partitionBy.map(qi).join(', ')}`
+					: '';
+			if (!config.orderBy && config.fn !== 'row_number') {
+				throw new Error('Pick an order column.');
+			}
+			const order = config.orderBy ? `order by ${qi(config.orderBy)}` : '';
+			const over = `over (${[partition, order].filter(Boolean).join(' ')})`;
+			const col = qi(config.valueColumn);
+			const needsValue = config.fn !== 'row_number' && config.fn !== 'rank';
+			if (needsValue && !config.valueColumn) throw new Error('Pick a value column.');
+			switch (config.fn) {
+				case 'row_number':
+					return `select *, row_number() ${over} as ${alias} from ${input}`;
+				case 'rank':
+					return `select *, rank() ${over} as ${alias} from ${input}`;
+				case 'lag':
+					return `select *, lag(${col}) ${over} as ${alias} from ${input}`;
+				case 'lead':
+					return `select *, lead(${col}) ${over} as ${alias} from ${input}`;
+				case 'cumulative_sum':
+					return `select *, sum(${col}) over (${[partition, order].filter(Boolean).join(' ')} rows unbounded preceding) as ${alias} from ${input}`;
+				case 'moving_avg': {
+					const span = Math.max(1, Math.floor(config.windowSize || 7)) - 1;
+					return `select *, avg(${col}) over (${[partition, order].filter(Boolean).join(' ')} rows between ${span} preceding and current row) as ${alias} from ${input}`;
+				}
+				case 'pct_change':
+					return `select *, (${col} - lag(${col}) ${over}) / nullif(lag(${col}) ${over}, 0) as ${alias} from ${input}`;
+			}
+			break;
+		}
+		case 'dedupe': {
+			const config = node.config as DedupeNodeConfig;
+			if (config.columns.length === 0) return `select distinct * from ${input}`;
+			return `select * from ${input} qualify row_number() over (partition by ${config.columns.map(qi).join(', ')}) = 1`;
+		}
+		case 'sample': {
+			const config = node.config as SampleNodeConfig;
+			const value = Math.max(0, config.value || 0);
+			const unit =
+				config.mode === 'percent' ? `${Math.min(100, value)} percent` : `${Math.floor(value)} rows`;
+			return `select * from ${input} using sample ${unit}`;
+		}
+		case 'cast': {
+			const config = node.config as CastNodeConfig;
+			if (!config.column) return `select * from ${input}`;
+			return `select * replace (cast(${qi(config.column)} as ${config.type}) as ${qi(config.column)}) from ${input}`;
+		}
+		case 'rename': {
+			const config = node.config as RenameNodeConfig;
+			const valid = config.renames.filter((r) => r.from && r.to);
+			if (valid.length === 0) return `select * from ${input}`;
+			return `select * rename (${valid.map((r) => `${qi(r.from)} as ${qi(r.to)}`).join(', ')}) from ${input}`;
+		}
 		default:
 			return `select * from ${input}`;
 	}
+	return `select * from ${input}`;
 }
 
 async function materializeSource(
 	node: WorkflowNode,
 	view: string,
-	connections: DataConnection[]
+	connections: DataConnection[],
+	params?: WorkflowParam[]
 ): Promise<void> {
 	if (node.kind === 'table') {
 		const config = node.config as TableNodeConfig;
@@ -227,7 +324,7 @@ async function materializeSource(
 		}
 		const connection = connections.find((c) => c.id === config.connectionId);
 		if (!connection) throw new Error('Connection not found.');
-		if (isFileConnection(connection)) {
+		if (isLocalConnection(connection)) {
 			await runQuery(
 				`create or replace temp view ${view} as select * from ${qi(config.tableName)}`
 			);
@@ -243,14 +340,15 @@ async function materializeSource(
 	}
 	const config = node.config as SqlNodeConfig;
 	if (!config.sql.trim()) throw new Error('SQL query is empty.');
+	const sql = interpolateParams(config.sql, params);
 	const connection = connections.find((c) => c.id === config.connectionId);
-	if (connection && !isFileConnection(connection)) {
-		const result = await executeQuery(connection, config.sql);
+	if (connection && !isLocalConnection(connection)) {
+		const result = await executeQuery(connection, sql);
 		await materializeRows(`${view}_data`, result.columns, result.rows);
 		await runQuery(`create or replace temp view ${view} as select * from ${qi(`${view}_data`)}`);
 		return;
 	}
-	await runQuery(`create or replace temp view ${view} as ${config.sql}`);
+	await runQuery(`create or replace temp view ${view} as ${sql}`);
 }
 
 export async function runWorkflow(
@@ -284,12 +382,14 @@ export async function runWorkflow(
 				throw new Error('No input connected.');
 			}
 			if (def.category === 'source') {
-				await materializeSource(node, view, connections);
+				await materializeSource(node, view, connections, workflow.params);
 			} else if (def.category === 'output') {
 				const upstream = Object.values(inputs)[0];
 				await runQuery(`create or replace temp view ${view} as select * from ${upstream}`);
 			} else {
-				await runQuery(`create or replace temp view ${view} as ${compileTransform(node, inputs)}`);
+				await runQuery(
+					`create or replace temp view ${view} as ${compileTransform(node, inputs, workflow.params)}`
+				);
 			}
 
 			const sample = await runQueryWithColumns(`select * from ${view} limit ${SAMPLE_LIMIT}`);

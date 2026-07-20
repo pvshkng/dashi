@@ -18,6 +18,20 @@
 
 	let { children } = $props();
 
+	function onKeydown(event: KeyboardEvent) {
+		if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'z') return;
+		const target = event.target as HTMLElement | null;
+		if (
+			target &&
+			(target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+		) {
+			return;
+		}
+		event.preventDefault();
+		if (event.shiftKey) void workspaceStore.redo();
+		else void workspaceStore.undo();
+	}
+
 	onMount(async () => {
 		if (!connectionsStore.loaded) {
 			await connectionsStore.load();
@@ -29,6 +43,7 @@
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
+<svelte:window onkeydown={onKeydown} />
 <ModeWatcher defaultMode="light" track={false} />
 
 <Tooltip.Provider>
