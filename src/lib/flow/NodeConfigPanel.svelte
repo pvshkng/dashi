@@ -2,7 +2,11 @@
 	import type {
 		AggregateFn,
 		AggregateNodeConfig,
+		CastNodeConfig,
+		CastType,
 		ChartNodeConfig,
+		ChartType,
+		DedupeNodeConfig,
 		FilterNodeConfig,
 		FilterOp,
 		FormulaNodeConfig,
@@ -10,11 +14,19 @@
 		JoinNodeConfig,
 		LimitNodeConfig,
 		MetricNodeConfig,
+		PivotNodeConfig,
+		PivotTableNodeConfig,
+		RenameNodeConfig,
+		SampleNodeConfig,
 		SelectNodeConfig,
 		SortNodeConfig,
 		SqlNodeConfig,
 		TableNodeConfig,
 		UnionNodeConfig,
+		UnpivotNodeConfig,
+		ValueFormat,
+		WindowFn,
+		WindowNodeConfig,
 		Workflow,
 		WorkflowNode
 	} from '$lib/workflow/types';
@@ -36,6 +48,8 @@
 	import PlusIcon from 'phosphor-svelte/lib/Plus';
 	import SquaresFourIcon from 'phosphor-svelte/lib/SquaresFour';
 	import XIcon from 'phosphor-svelte/lib/X';
+	import DownloadSimpleIcon from 'phosphor-svelte/lib/DownloadSimple';
+	import { downloadNodeData } from '$lib/query/download';
 
 	let {
 		workflow,
@@ -66,9 +80,44 @@
 		{ value: 'is_null', label: 'is null' },
 		{ value: 'not_null', label: 'is not null' }
 	];
-	const aggregateFns: AggregateFn[] = ['count', 'count_distinct', 'sum', 'avg', 'min', 'max'];
-	const chartTypes = ['line', 'bar', 'area', 'scatter', 'pie'] as const;
+	const aggregateFns: AggregateFn[] = [
+		'count',
+		'count_distinct',
+		'sum',
+		'avg',
+		'min',
+		'max',
+		'median',
+		'stddev'
+	];
 	const joinTypes = ['inner', 'left', 'right', 'full'] as const;
+	const castTypes: CastType[] = ['varchar', 'integer', 'double', 'date', 'timestamp', 'boolean'];
+	const chartTypes: { value: ChartType; label: string }[] = [
+		{ value: 'line', label: 'Line' },
+		{ value: 'bar', label: 'Bar' },
+		{ value: 'horizontal-bar', label: 'Horizontal bar' },
+		{ value: 'stacked-bar', label: 'Stacked bar' },
+		{ value: 'grouped-bar', label: 'Grouped bar' },
+		{ value: 'area', label: 'Area' },
+		{ value: 'scatter', label: 'Scatter' },
+		{ value: 'pie', label: 'Pie' },
+		{ value: 'donut', label: 'Donut' },
+		{ value: 'histogram', label: 'Histogram' },
+		{ value: 'heatmap', label: 'Heatmap' },
+		{ value: 'funnel', label: 'Funnel' },
+		{ value: 'waterfall', label: 'Waterfall' },
+		{ value: 'gauge', label: 'Gauge' },
+		{ value: 'treemap', label: 'Treemap' }
+	];
+	const windowFns: { value: WindowFn; label: string }[] = [
+		{ value: 'cumulative_sum', label: 'Running total' },
+		{ value: 'moving_avg', label: 'Moving average' },
+		{ value: 'pct_change', label: '% change vs previous' },
+		{ value: 'lag', label: 'Previous value (lag)' },
+		{ value: 'lead', label: 'Next value (lead)' },
+		{ value: 'row_number', label: 'Row number' },
+		{ value: 'rank', label: 'Rank' }
+	];
 
 	let def = $derived(getNodeDef(node.kind));
 	let runState = $derived(workflowRuntime.get(workflow.id));
@@ -98,6 +147,53 @@
 		return listTables(connection).catch(() => [] as string[]);
 	});
 </script>
+
+{#snippet formatEditor(format: ValueFormat | undefined, onchange: (format?: ValueFormat) => void)}
+	<div class="space-y-1">
+		<Label class="text-xs">Number format</Label>
+		<div class="flex items-center gap-1">
+			<Select.Root
+				type="single"
+				value={format?.style ?? 'auto'}
+				onValueChange={(value) =>
+					onchange(
+						value === 'auto'
+							? undefined
+							: { ...format, style: value as ValueFormat['style'] }
+					)}
+			>
+				<Select.Trigger class="h-8 flex-1 text-xs">{format?.style ?? 'auto'}</Select.Trigger>
+				<Select.Content>
+					<Select.Item value="auto" label="auto" />
+					<Select.Item value="number" label="number" />
+					<Select.Item value="currency" label="currency" />
+					<Select.Item value="percent" label="percent" />
+					<Select.Item value="compact" label="compact" />
+				</Select.Content>
+			</Select.Root>
+			{#if format}
+				<Input
+					type="number"
+					value={format.decimals ?? ''}
+					placeholder="dp"
+					class="h-8 w-16 text-xs"
+					onchange={(event) => {
+						const raw = (event.target as HTMLInputElement).value;
+						onchange({ ...format, decimals: raw === '' ? undefined : Number(raw) });
+					}}
+				/>
+			{/if}
+			{#if format?.style === 'currency'}
+				<Input
+					value={format.currency ?? 'USD'}
+					class="h-8 w-16 text-xs uppercase"
+					onchange={(event) =>
+						onchange({ ...format, currency: (event.target as HTMLInputElement).value || 'USD' })}
+				/>
+			{/if}
+		</div>
+	</div>
+{/snippet}
 
 {#snippet columnSelect(
 	value: string,
@@ -558,6 +654,292 @@
 					/>
 				</div>
 			</div>
+		{:else if node.kind === 'pivot'}
+			{@const config = node.config as PivotNodeConfig}
+			<div class="space-y-1">
+				<Label class="text-xs">Spread column (new columns from values)</Label>
+				{@render columnSelect(config.on, inputColumns, (column) => patch({ on: column }))}
+			</div>
+			<div class="space-y-1">
+				<Label class="text-xs">Value column</Label>
+				{@render columnSelect(config.valueColumn, inputColumns, (column) =>
+					patch({ valueColumn: column })
+				)}
+			</div>
+			<div class="space-y-1">
+				<Label class="text-xs">Aggregation</Label>
+				<Select.Root
+					type="single"
+					value={config.fn}
+					onValueChange={(value) => patch({ fn: value as AggregateFn })}
+				>
+					<Select.Trigger class="h-8 w-full text-xs">{config.fn}</Select.Trigger>
+					<Select.Content>
+						{#each aggregateFns as fn (fn)}
+							<Select.Item value={fn} label={fn} />
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			</div>
+			<div class="space-y-1">
+				<Label class="text-xs">Group by (optional)</Label>
+				<div class="space-y-1 rounded-lg border p-2">
+					{#each inputColumns.filter((c) => c !== config.on && c !== config.valueColumn) as column (column)}
+						<label class="flex items-center gap-2 text-xs">
+							<input
+								type="checkbox"
+								checked={config.groupBy.includes(column)}
+								onchange={(event) => {
+									const checked = (event.target as HTMLInputElement).checked;
+									patch({
+										groupBy: checked
+											? [...config.groupBy, column]
+											: config.groupBy.filter((c) => c !== column)
+									});
+								}}
+							/>
+							{column}
+						</label>
+					{:else}
+						<p class="text-muted-foreground text-[10px]">Connect and run to see columns.</p>
+					{/each}
+				</div>
+			</div>
+		{:else if node.kind === 'unpivot'}
+			{@const config = node.config as UnpivotNodeConfig}
+			<div class="space-y-1">
+				<Label class="text-xs">Columns to fold</Label>
+				<div class="space-y-1 rounded-lg border p-2">
+					{#each inputColumns as column (column)}
+						<label class="flex items-center gap-2 text-xs">
+							<input
+								type="checkbox"
+								checked={config.columns.includes(column)}
+								onchange={(event) => {
+									const checked = (event.target as HTMLInputElement).checked;
+									patch({
+										columns: checked
+											? [...config.columns, column]
+											: config.columns.filter((c) => c !== column)
+									});
+								}}
+							/>
+							{column}
+						</label>
+					{:else}
+						<p class="text-muted-foreground text-[10px]">Connect and run to see columns.</p>
+					{/each}
+				</div>
+			</div>
+			<div class="grid grid-cols-2 gap-2">
+				<div class="space-y-1">
+					<Label class="text-xs">Name column</Label>
+					<Input
+						value={config.nameAlias}
+						class="h-8 font-mono text-xs"
+						onchange={(event) => patch({ nameAlias: (event.target as HTMLInputElement).value })}
+					/>
+				</div>
+				<div class="space-y-1">
+					<Label class="text-xs">Value column</Label>
+					<Input
+						value={config.valueAlias}
+						class="h-8 font-mono text-xs"
+						onchange={(event) => patch({ valueAlias: (event.target as HTMLInputElement).value })}
+					/>
+				</div>
+			</div>
+		{:else if node.kind === 'window'}
+			{@const config = node.config as WindowNodeConfig}
+			<div class="space-y-1">
+				<Label class="text-xs">Function</Label>
+				<Select.Root
+					type="single"
+					value={config.fn}
+					onValueChange={(value) => patch({ fn: value as WindowFn })}
+				>
+					<Select.Trigger class="h-8 w-full text-xs">
+						{windowFns.find((fn) => fn.value === config.fn)?.label}
+					</Select.Trigger>
+					<Select.Content>
+						{#each windowFns as fn (fn.value)}
+							<Select.Item value={fn.value} label={fn.label} />
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			</div>
+			{#if config.fn !== 'row_number' && config.fn !== 'rank'}
+				<div class="space-y-1">
+					<Label class="text-xs">Value column</Label>
+					{@render columnSelect(config.valueColumn, inputColumns, (column) =>
+						patch({ valueColumn: column })
+					)}
+				</div>
+			{/if}
+			<div class="space-y-1">
+				<Label class="text-xs">Order by</Label>
+				{@render columnSelect(config.orderBy, inputColumns, (column) => patch({ orderBy: column }))}
+			</div>
+			<div class="space-y-1">
+				<Label class="text-xs">Partition by (optional)</Label>
+				<div class="space-y-1 rounded-lg border p-2">
+					{#each inputColumns as column (column)}
+						<label class="flex items-center gap-2 text-xs">
+							<input
+								type="checkbox"
+								checked={config.partitionBy.includes(column)}
+								onchange={(event) => {
+									const checked = (event.target as HTMLInputElement).checked;
+									patch({
+										partitionBy: checked
+											? [...config.partitionBy, column]
+											: config.partitionBy.filter((c) => c !== column)
+									});
+								}}
+							/>
+							{column}
+						</label>
+					{:else}
+						<p class="text-muted-foreground text-[10px]">Connect and run to see columns.</p>
+					{/each}
+				</div>
+			</div>
+			{#if config.fn === 'moving_avg'}
+				<div class="space-y-1">
+					<Label class="text-xs">Window size (rows)</Label>
+					<Input
+						type="number"
+						value={config.windowSize}
+						class="h-8 text-xs"
+						onchange={(event) =>
+							patch({ windowSize: Number((event.target as HTMLInputElement).value) || 7 })}
+					/>
+				</div>
+			{/if}
+			<div class="space-y-1">
+				<Label class="text-xs">New column name</Label>
+				<Input
+					value={config.alias}
+					class="h-8 font-mono text-xs"
+					onchange={(event) => patch({ alias: (event.target as HTMLInputElement).value })}
+				/>
+			</div>
+		{:else if node.kind === 'dedupe'}
+			{@const config = node.config as DedupeNodeConfig}
+			<div class="space-y-1">
+				<Label class="text-xs">Unique by</Label>
+				<p class="text-muted-foreground text-[10px]">
+					Nothing checked removes fully identical rows.
+				</p>
+				<div class="space-y-1 rounded-lg border p-2">
+					{#each inputColumns as column (column)}
+						<label class="flex items-center gap-2 text-xs">
+							<input
+								type="checkbox"
+								checked={config.columns.includes(column)}
+								onchange={(event) => {
+									const checked = (event.target as HTMLInputElement).checked;
+									patch({
+										columns: checked
+											? [...config.columns, column]
+											: config.columns.filter((c) => c !== column)
+									});
+								}}
+							/>
+							{column}
+						</label>
+					{:else}
+						<p class="text-muted-foreground text-[10px]">Connect and run to see columns.</p>
+					{/each}
+				</div>
+			</div>
+		{:else if node.kind === 'sample'}
+			{@const config = node.config as SampleNodeConfig}
+			<div class="grid grid-cols-2 gap-2">
+				<div class="space-y-1">
+					<Label class="text-xs">Mode</Label>
+					<Select.Root
+						type="single"
+						value={config.mode}
+						onValueChange={(value) => patch({ mode: value })}
+					>
+						<Select.Trigger class="h-8 w-full text-xs">{config.mode}</Select.Trigger>
+						<Select.Content>
+							<Select.Item value="rows" label="rows" />
+							<Select.Item value="percent" label="percent" />
+						</Select.Content>
+					</Select.Root>
+				</div>
+				<div class="space-y-1">
+					<Label class="text-xs">{config.mode === 'percent' ? 'Percent' : 'Rows'}</Label>
+					<Input
+						type="number"
+						value={config.value}
+						class="h-8 text-xs"
+						onchange={(event) =>
+							patch({ value: Number((event.target as HTMLInputElement).value) || 0 })}
+					/>
+				</div>
+			</div>
+		{:else if node.kind === 'cast'}
+			{@const config = node.config as CastNodeConfig}
+			<div class="space-y-1">
+				<Label class="text-xs">Column</Label>
+				{@render columnSelect(config.column, inputColumns, (column) => patch({ column }))}
+			</div>
+			<div class="space-y-1">
+				<Label class="text-xs">New type</Label>
+				<Select.Root
+					type="single"
+					value={config.type}
+					onValueChange={(value) => patch({ type: value as CastType })}
+				>
+					<Select.Trigger class="h-8 w-full text-xs">{config.type}</Select.Trigger>
+					<Select.Content>
+						{#each castTypes as type (type)}
+							<Select.Item value={type} label={type} />
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			</div>
+		{:else if node.kind === 'rename'}
+			{@const config = node.config as RenameNodeConfig}
+			{#each config.renames as rename, index (index)}
+				<div class="flex items-center gap-1">
+					{@render columnSelect(rename.from, inputColumns, (column) => {
+						const renames = [...config.renames];
+						renames[index] = { ...rename, from: column };
+						patch({ renames });
+					})}
+					<Input
+						value={rename.to}
+						class="h-8 flex-1 font-mono text-xs"
+						placeholder="new name"
+						onchange={(event) => {
+							const renames = [...config.renames];
+							renames[index] = { ...rename, to: (event.target as HTMLInputElement).value };
+							patch({ renames });
+						}}
+					/>
+					<Button
+						variant="ghost"
+						size="icon"
+						class="size-7 shrink-0"
+						onclick={() => patch({ renames: config.renames.filter((_, i) => i !== index) })}
+					>
+						<TrashIcon size={12} />
+					</Button>
+				</div>
+			{/each}
+			<Button
+				variant="outline"
+				size="sm"
+				class="w-full text-xs"
+				onclick={() => patch({ renames: [...config.renames, { from: '', to: '' }] })}
+			>
+				<PlusIcon size={12} />
+				Add rename
+			</Button>
 		{:else if node.kind === 'chart'}
 			{@const config = node.config as ChartNodeConfig}
 			<div class="space-y-1">
@@ -567,28 +949,105 @@
 					value={config.chartType}
 					onValueChange={(value) => patch({ chartType: value })}
 				>
-					<Select.Trigger class="h-8 w-full text-xs">{config.chartType}</Select.Trigger>
+					<Select.Trigger class="h-8 w-full text-xs">
+						{chartTypes.find((t) => t.value === config.chartType)?.label ?? config.chartType}
+					</Select.Trigger>
 					<Select.Content>
-						{#each chartTypes as type (type)}
-							<Select.Item value={type} label={type} />
+						{#each chartTypes as type (type.value)}
+							<Select.Item value={type.value} label={type.label} />
 						{/each}
 					</Select.Content>
 				</Select.Root>
 			</div>
-			<div class="space-y-1">
-				<Label class="text-xs">{config.chartType === 'pie' ? 'Category' : 'X axis'}</Label>
-				{@render columnSelect(config.x, inputColumns, (column) => patch({ x: column }))}
-			</div>
-			<div class="space-y-1">
-				<Label class="text-xs">{config.chartType === 'pie' ? 'Value' : 'Y axis'}</Label>
-				{@render columnSelect(config.y, inputColumns, (column) => patch({ y: column }))}
-			</div>
-			{#if config.chartType === 'line'}
+			{#if config.chartType !== 'gauge'}
 				<div class="space-y-1">
-					<Label class="text-xs">Series (optional)</Label>
+					<Label class="text-xs">
+						{['pie', 'donut', 'funnel', 'treemap'].includes(config.chartType)
+							? 'Category'
+							: config.chartType === 'histogram'
+								? 'Value column'
+								: 'X axis'}
+					</Label>
+					{@render columnSelect(config.x, inputColumns, (column) => patch({ x: column }))}
+				</div>
+			{/if}
+			{#if config.chartType !== 'histogram'}
+				<div class="space-y-1">
+					<Label class="text-xs">
+						{['pie', 'donut', 'funnel', 'treemap', 'gauge'].includes(config.chartType)
+							? 'Value'
+							: config.chartType === 'heatmap'
+								? 'Y axis (category)'
+								: 'Y axis'}
+					</Label>
+					{@render columnSelect(config.y, inputColumns, (column) => patch({ y: column }))}
+				</div>
+			{/if}
+			{#if ['line', 'area', 'stacked-bar', 'grouped-bar', 'heatmap'].includes(config.chartType)}
+				<div class="space-y-1">
+					<Label class="text-xs">
+						{config.chartType === 'heatmap'
+							? 'Value column'
+							: config.chartType === 'stacked-bar'
+								? 'Stack by'
+								: config.chartType === 'grouped-bar'
+									? 'Group by'
+									: 'Series (optional)'}
+					</Label>
 					{@render columnSelect(config.series ?? '', inputColumns, (column) =>
 						patch({ series: column || undefined })
 					)}
+				</div>
+			{/if}
+			{#if config.chartType === 'histogram'}
+				<div class="space-y-1">
+					<Label class="text-xs">Buckets</Label>
+					<Input
+						type="number"
+						value={config.bins ?? 20}
+						class="h-8 text-xs"
+						onchange={(event) =>
+							patch({ bins: Number((event.target as HTMLInputElement).value) || 20 })}
+					/>
+				</div>
+			{/if}
+			{#if config.chartType === 'gauge'}
+				<div class="space-y-1">
+					<Label class="text-xs">Scale maximum (blank = auto)</Label>
+					<Input
+						type="number"
+						value={config.max ?? ''}
+						class="h-8 text-xs"
+						onchange={(event) =>
+							patch({ max: Number((event.target as HTMLInputElement).value) || undefined })}
+					/>
+				</div>
+			{/if}
+			{@render formatEditor(config.format, (format) => patch({ format }))}
+			{#if !['gauge', 'histogram', 'heatmap', 'waterfall'].includes(config.chartType)}
+				<div class="space-y-1">
+					<Label class="text-xs">Drill-down dimensions (click to descend)</Label>
+					<div class="space-y-1 rounded-lg border p-2">
+						{#each inputColumns as column (column)}
+							<label class="flex items-center gap-2 text-xs">
+								<input
+									type="checkbox"
+									checked={(config.drillDimensions ?? []).includes(column)}
+									onchange={(event) => {
+										const checked = (event.target as HTMLInputElement).checked;
+										const current = config.drillDimensions ?? [];
+										const next = checked
+											? [...current, column]
+											: current.filter((c) => c !== column);
+										patch({ drillDimensions: next.length > 0 ? next : undefined });
+									}}
+								/>
+								{column}
+							</label>
+						{:else}
+							<p class="text-muted-foreground text-[10px]">Connect and run to see columns.</p>
+						{/each}
+					</div>
 				</div>
 			{/if}
 			<div class="space-y-1">
@@ -620,6 +1079,89 @@
 						patch({ pageSize: Number((event.target as HTMLInputElement).value) || 50 })}
 				/>
 			</div>
+			{@render formatEditor(config.format, (format) => patch({ format }))}
+		{:else if node.kind === 'pivottable'}
+			{@const config = node.config as PivotTableNodeConfig}
+			<div class="grid grid-cols-2 gap-2">
+				<div class="space-y-1">
+					<Label class="text-xs">Rows</Label>
+					<div class="space-y-1 rounded-lg border p-2">
+						{#each inputColumns as column (column)}
+							<label class="flex items-center gap-2 text-xs">
+								<input
+									type="checkbox"
+									checked={config.rows.includes(column)}
+									onchange={(event) => {
+										const checked = (event.target as HTMLInputElement).checked;
+										patch({
+											rows: checked
+												? [...config.rows, column]
+												: config.rows.filter((c) => c !== column)
+										});
+									}}
+								/>
+								{column}
+							</label>
+						{:else}
+							<p class="text-muted-foreground text-[10px]">Run to see columns.</p>
+						{/each}
+					</div>
+				</div>
+				<div class="space-y-1">
+					<Label class="text-xs">Columns</Label>
+					<div class="space-y-1 rounded-lg border p-2">
+						{#each inputColumns as column (column)}
+							<label class="flex items-center gap-2 text-xs">
+								<input
+									type="checkbox"
+									checked={config.cols.includes(column)}
+									onchange={(event) => {
+										const checked = (event.target as HTMLInputElement).checked;
+										patch({
+											cols: checked
+												? [...config.cols, column]
+												: config.cols.filter((c) => c !== column)
+										});
+									}}
+								/>
+								{column}
+							</label>
+						{:else}
+							<p class="text-muted-foreground text-[10px]">Run to see columns.</p>
+						{/each}
+					</div>
+				</div>
+			</div>
+			<div class="space-y-1">
+				<Label class="text-xs">Value column</Label>
+				{@render columnSelect(config.valueColumn, inputColumns, (column) =>
+					patch({ valueColumn: column })
+				)}
+			</div>
+			<div class="space-y-1">
+				<Label class="text-xs">Aggregation</Label>
+				<Select.Root
+					type="single"
+					value={config.fn}
+					onValueChange={(value) => patch({ fn: value as AggregateFn })}
+				>
+					<Select.Trigger class="h-8 w-full text-xs">{config.fn}</Select.Trigger>
+					<Select.Content>
+						{#each aggregateFns as fn (fn)}
+							<Select.Item value={fn} label={fn} />
+						{/each}
+					</Select.Content>
+				</Select.Root>
+			</div>
+			<div class="flex items-center justify-between gap-2">
+				<Label for="pivot-totals" class="text-xs">Show totals</Label>
+				<Switch
+					id="pivot-totals"
+					checked={config.showTotals}
+					onCheckedChange={(checked) => patch({ showTotals: checked })}
+				/>
+			</div>
+			{@render formatEditor(config.format, (format) => patch({ format }))}
 		{:else if node.kind === 'metric'}
 			{@const config = node.config as MetricNodeConfig}
 			<div class="space-y-1">
@@ -656,6 +1198,46 @@
 					/>
 				</div>
 			</div>
+			{@render formatEditor(config.format, (format) => patch({ format }))}
+			<div class="space-y-1">
+				<Label class="text-xs">Alert when value is…</Label>
+				<div class="flex items-center gap-1">
+					<Select.Root
+						type="single"
+						value={config.alert?.op ?? 'off'}
+						onValueChange={(value) =>
+							patch({
+								alert:
+									value === 'off'
+										? undefined
+										: { op: value as 'gt' | 'lt', threshold: config.alert?.threshold ?? 0 }
+							})}
+					>
+						<Select.Trigger class="h-8 w-28 text-xs">
+							{config.alert?.op === 'gt' ? 'above' : config.alert?.op === 'lt' ? 'below' : 'off'}
+						</Select.Trigger>
+						<Select.Content>
+							<Select.Item value="off" label="off" />
+							<Select.Item value="gt" label="above" />
+							<Select.Item value="lt" label="below" />
+						</Select.Content>
+					</Select.Root>
+					{#if config.alert}
+						<Input
+							type="number"
+							value={config.alert.threshold}
+							class="h-8 flex-1 text-xs"
+							onchange={(event) =>
+								patch({
+									alert: {
+										op: config.alert?.op ?? 'gt',
+										threshold: Number((event.target as HTMLInputElement).value) || 0
+									}
+								})}
+						/>
+					{/if}
+				</div>
+			</div>
 		{/if}
 
 		{#if result && !result.error && ownColumns.length > 0}
@@ -674,16 +1256,40 @@
 		{/if}
 	</div>
 
-	<footer class="flex items-center gap-2 border-t p-3">
-		{#if isVizKind(node.kind)}
-			<Button size="sm" class="flex-1 text-xs" onclick={onAddToDashboard}>
-				<SquaresFourIcon size={14} />
-				Add to dashboard
-			</Button>
+	<footer class="space-y-2 border-t p-3">
+		{#if result && !result.error}
+			<div class="flex items-center gap-2">
+				<Button
+					variant="outline"
+					size="sm"
+					class="flex-1 text-xs"
+					onclick={() => downloadNodeData(workflow.id, node.id, node.label, 'csv')}
+				>
+					<DownloadSimpleIcon size={14} />
+					CSV
+				</Button>
+				<Button
+					variant="outline"
+					size="sm"
+					class="flex-1 text-xs"
+					onclick={() => downloadNodeData(workflow.id, node.id, node.label, 'json')}
+				>
+					<DownloadSimpleIcon size={14} />
+					JSON
+				</Button>
+			</div>
 		{/if}
-		<Button variant="outline" size="sm" class="text-destructive text-xs" onclick={onDelete}>
-			<TrashIcon size={14} />
-			Delete
-		</Button>
+		<div class="flex items-center gap-2">
+			{#if isVizKind(node.kind)}
+				<Button size="sm" class="flex-1 text-xs" onclick={onAddToDashboard}>
+					<SquaresFourIcon size={14} />
+					Add to dashboard
+				</Button>
+			{/if}
+			<Button variant="outline" size="sm" class="text-destructive text-xs" onclick={onDelete}>
+				<TrashIcon size={14} />
+				Delete
+			</Button>
+		</div>
 	</footer>
 </aside>

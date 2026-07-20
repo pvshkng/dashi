@@ -119,6 +119,76 @@ export const nodeDefs: { [K in NodeKind]: NodeDef<K> } = {
 		hasOutput: true,
 		defaultConfig: () => ({ count: 100, offset: 0 })
 	},
+	pivot: {
+		kind: 'pivot',
+		label: 'Pivot',
+		description: 'Spread a column into new columns',
+		category: 'transform',
+		inputs: single,
+		hasOutput: true,
+		defaultConfig: () => ({ on: '', valueColumn: '', fn: 'sum', groupBy: [] })
+	},
+	unpivot: {
+		kind: 'unpivot',
+		label: 'Unpivot',
+		description: 'Fold columns into key/value rows',
+		category: 'transform',
+		inputs: single,
+		hasOutput: true,
+		defaultConfig: () => ({ columns: [], nameAlias: 'name', valueAlias: 'value' })
+	},
+	window: {
+		kind: 'window',
+		label: 'Window',
+		description: 'Running totals, moving averages, ranks',
+		category: 'transform',
+		inputs: single,
+		hasOutput: true,
+		defaultConfig: () => ({
+			fn: 'cumulative_sum',
+			valueColumn: '',
+			partitionBy: [],
+			orderBy: '',
+			alias: 'window_value',
+			windowSize: 7
+		})
+	},
+	dedupe: {
+		kind: 'dedupe',
+		label: 'Deduplicate',
+		description: 'Drop duplicate rows',
+		category: 'transform',
+		inputs: single,
+		hasOutput: true,
+		defaultConfig: () => ({ columns: [] })
+	},
+	sample: {
+		kind: 'sample',
+		label: 'Sample',
+		description: 'Keep a random subset of rows',
+		category: 'transform',
+		inputs: single,
+		hasOutput: true,
+		defaultConfig: () => ({ mode: 'rows', value: 1000 })
+	},
+	cast: {
+		kind: 'cast',
+		label: 'Cast type',
+		description: 'Change a column type',
+		category: 'transform',
+		inputs: single,
+		hasOutput: true,
+		defaultConfig: () => ({ column: '', type: 'varchar' })
+	},
+	rename: {
+		kind: 'rename',
+		label: 'Rename',
+		description: 'Rename columns',
+		category: 'transform',
+		inputs: single,
+		hasOutput: true,
+		defaultConfig: () => ({ renames: [] })
+	},
 	chart: {
 		kind: 'chart',
 		label: 'Chart',
@@ -145,6 +215,21 @@ export const nodeDefs: { [K in NodeKind]: NodeDef<K> } = {
 		inputs: single,
 		hasOutput: false,
 		defaultConfig: () => ({ column: '', label: '' })
+	},
+	pivottable: {
+		kind: 'pivottable',
+		label: 'Pivot table',
+		description: 'Interactive rows × columns summary',
+		category: 'output',
+		inputs: single,
+		hasOutput: false,
+		defaultConfig: () => ({
+			rows: [],
+			cols: [],
+			valueColumn: '',
+			fn: 'sum',
+			showTotals: true
+		})
 	}
 };
 

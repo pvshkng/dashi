@@ -12,6 +12,14 @@ import ScissorsIcon from 'phosphor-svelte/lib/Scissors';
 import ChartBarIcon from 'phosphor-svelte/lib/ChartBar';
 import GridFourIcon from 'phosphor-svelte/lib/GridFour';
 import NumberCircleOneIcon from 'phosphor-svelte/lib/NumberCircleOne';
+import ArrowsOutLineHorizontalIcon from 'phosphor-svelte/lib/ArrowsOutLineHorizontal';
+import ArrowsInLineVerticalIcon from 'phosphor-svelte/lib/ArrowsInLineVertical';
+import WaveSineIcon from 'phosphor-svelte/lib/WaveSine';
+import CopySimpleIcon from 'phosphor-svelte/lib/CopySimple';
+import ShuffleIcon from 'phosphor-svelte/lib/Shuffle';
+import SwapIcon from 'phosphor-svelte/lib/Swap';
+import TextboxIcon from 'phosphor-svelte/lib/Textbox';
+import SquaresFourIcon from 'phosphor-svelte/lib/SquaresFour';
 
 export const nodeIcons: Record<NodeKind, typeof TableIcon> = {
 	table: TableIcon,
@@ -24,7 +32,15 @@ export const nodeIcons: Record<NodeKind, typeof TableIcon> = {
 	union: StackIcon,
 	sort: SortAscendingIcon,
 	limit: ScissorsIcon,
+	pivot: ArrowsOutLineHorizontalIcon,
+	unpivot: ArrowsInLineVerticalIcon,
+	window: WaveSineIcon,
+	dedupe: CopySimpleIcon,
+	sample: ShuffleIcon,
+	cast: SwapIcon,
+	rename: TextboxIcon,
 	chart: ChartBarIcon,
 	grid: GridFourIcon,
-	metric: NumberCircleOneIcon
+	metric: NumberCircleOneIcon,
+	pivottable: SquaresFourIcon
 };
