@@ -40,7 +40,12 @@
 		}
 	}
 
-	const vizIcons = { chart: ChartBarIcon, grid: TableIcon, metric: NumberCircleOneIcon } as const;
+	const vizIcons = {
+		chart: ChartBarIcon,
+		grid: TableIcon,
+		metric: NumberCircleOneIcon,
+		pivottable: TableIcon
+	} as const;
 
 	let vizOptions = $derived(
 		workspaceStore.workflows.flatMap((workflow) =>

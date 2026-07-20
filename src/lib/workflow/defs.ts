@@ -245,6 +245,6 @@ export const categoryLabels: Record<NodeCategory, string> = {
 	output: 'Outputs'
 };
 
-export function isVizKind(kind: NodeKind): kind is 'chart' | 'grid' | 'metric' {
+export function isVizKind(kind: NodeKind): kind is 'chart' | 'grid' | 'metric' | 'pivottable' {
 	return nodeDefs[kind].category === 'output';
 }
